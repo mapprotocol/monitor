@@ -1,7 +1,6 @@
 package near
 
 import (
-	"fmt"
 	"github.com/ChainSafe/log15"
 	"github.com/mapprotocol/monitor/internal/chain"
 	"github.com/mapprotocol/monitor/internal/config"
@@ -18,13 +17,11 @@ type Chain struct {
 }
 
 func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr chan<- error) (*Chain, error) {
-	fmt.Println("chainCfg ----- ", chainCfg.Id)
 	cfg, err := config.ParseOptConfig(chainCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("chainCfg ----- ", cfg.Id)
 	kp, err := keystore.NearKeyPairFrom(chainCfg.Network, cfg.KeystorePath, cfg.From)
 	if err != nil {
 		return nil, err
