@@ -2,7 +2,6 @@ package eth
 
 import (
 	"github.com/ChainSafe/chainbridge-utils/crypto/secp256k1"
-	"github.com/ChainSafe/chainbridge-utils/msg"
 	"github.com/ChainSafe/log15"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/mapprotocol/monitor/internal/chain"
@@ -69,7 +68,7 @@ func (c *Chain) Start() error {
 	return nil
 }
 
-func (c *Chain) Id() msg.ChainId {
+func (c *Chain) Id() config.ChainId {
 	return c.cfg.Id
 }
 

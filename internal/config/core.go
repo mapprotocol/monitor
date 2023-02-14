@@ -1,10 +1,8 @@
 package config
 
-import "github.com/ChainSafe/chainbridge-utils/msg"
-
 type ChainConfig struct {
 	Name             string            // Human-readable chains name
-	Id               msg.ChainId       // ChainID
+	Id               ChainId           // ChainID
 	Endpoint         string            // url for rpc endpoint
 	Network          string            //
 	From             string            // address of key to use
