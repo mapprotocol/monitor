@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ChainSafe/chainbridge-utils/msg"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/urfave/cli/v2"
@@ -115,18 +114,18 @@ func loadConfig(file string, config *Config) error {
 }
 
 type OptConfig struct {
-	Name           string      // Human-readable chain name
-	Id             msg.ChainId // ChainID
-	Endpoint       string      // url for rpc endpoint
-	From           string      // address of key to use
-	KeystorePath   string      // Location of keyfiles
+	Name           string  // Human-readable chain name
+	Id             ChainId // ChainID
+	Endpoint       string  // url for rpc endpoint
+	From           string  // address of key to use
+	KeystorePath   string  // Location of keyfiles
 	GasLimit       *big.Int
 	MaxGasPrice    *big.Int
 	GasMultiplier  *big.Float
 	WaterLine      string
 	ChangeInterval string
 	StartBlock     *big.Int
-	MapChainID     msg.ChainId
+	MapChainID     ChainId
 	LightNode      common.Address // the lightnode to sync header
 	EgsApiKey      string         // API key for ethgasstation to query gas prices
 	EgsSpeed       string         // The speed which a transaction should be processed: average, fast, fastest. Default: fast
@@ -160,7 +159,7 @@ func ParseOptConfig(chainCfg *ChainConfig) (*OptConfig, error) {
 		if errr != nil {
 			return nil, errr
 		}
-		config.MapChainID = msg.ChainId(chainId)
+		config.MapChainID = ChainId(chainId)
 	}
 
 	if waterLine, ok := chainCfg.Opts[WaterLine]; ok && waterLine != "" {

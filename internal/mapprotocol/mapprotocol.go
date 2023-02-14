@@ -2,7 +2,6 @@ package mapprotocol
 
 import (
 	"context"
-	"github.com/ChainSafe/chainbridge-utils/msg"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -17,11 +16,11 @@ var (
 	Height, _      = abi.JSON(strings.NewReader(config.HeightAbiJson))
 	LightManger, _ = abi.JSON(strings.NewReader(config.LightMangerAbi))
 	GlobalMapConn  *ethclient.Client
-	Get2MapHeight  = func(chainId msg.ChainId) (*big.Int, error) { return nil, nil } // get other chain to map height
+	Get2MapHeight  = func(chainId config.ChainId) (*big.Int, error) { return nil, nil } // get other chain to map height
 )
 
 func InitOtherChain2MapHeight(lightManager common.Address) {
-	Get2MapHeight = func(chainId msg.ChainId) (*big.Int, error) {
+	Get2MapHeight = func(chainId config.ChainId) (*big.Int, error) {
 		input, err := PackInput(LightManger, config.MethodOfHeaderHeight, big.NewInt(int64(chainId)))
 		if err != nil {
 			return nil, errors.Wrap(err, "get other2map packInput failed")

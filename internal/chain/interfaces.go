@@ -5,12 +5,10 @@ package chain
 
 import (
 	"github.com/ChainSafe/chainbridge-utils/crypto/secp256k1"
-	"github.com/ChainSafe/chainbridge-utils/msg"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/mapprotocol/monitor/internal/config"
 	"github.com/mapprotocol/monitor/pkg/ethclient"
-	nearclient "github.com/mapprotocol/near-api-go/pkg/client"
-	"github.com/mapprotocol/near-api-go/pkg/types/key"
 	"math/big"
 )
 
@@ -34,21 +32,7 @@ type Connection interface {
 
 type Chain interface {
 	Start() error // Start chains
-	Id() msg.ChainId
+	Id() config.ChainId
 	Name() string
 	Stop()
-}
-
-type NearConnection interface {
-	Connect() error
-	Keypair() *key.KeyPair
-	Opts() *bind.TransactOpts
-	CallOpts() *bind.CallOpts
-	LockAndUpdateOpts() error
-	UnlockOpts()
-	Client() *nearclient.Client
-	EnsureHasBytecode(address string) error
-	LatestBlock() (*big.Int, error)
-	WaitForBlock(block *big.Int, delay *big.Int) error
-	Close()
 }

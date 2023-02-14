@@ -85,3 +85,5 @@ var (
 		}
 	]`
 )
+
+type ChainId uint64

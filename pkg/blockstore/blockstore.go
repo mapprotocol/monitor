@@ -2,7 +2,7 @@ package blockstore
 
 import (
 	"fmt"
-	"github.com/ChainSafe/chainbridge-utils/msg"
+	"github.com/mapprotocol/monitor/internal/config"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -27,11 +27,11 @@ func (s *EmptyStore) StoreBlock(_ *big.Int) error { return nil }
 type Blockstore struct {
 	path     string // Path excluding filename
 	fullPath string
-	chain    msg.ChainId
+	chain    config.ChainId
 	relayer  string
 }
 
-func NewBlockstore(path string, chain msg.ChainId, relayer string) (*Blockstore, error) {
+func NewBlockstore(path string, chain config.ChainId, relayer string) (*Blockstore, error) {
 	fileName := getFileName(chain, relayer)
 	if path == "" {
 		path = PathPostfix
@@ -84,7 +84,7 @@ func (b *Blockstore) TryLoadLatestBlock() (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-func getFileName(chain msg.ChainId, relayer string) string {
+func getFileName(chain config.ChainId, relayer string) string {
 	return fmt.Sprintf("%s-%d.block", relayer, chain)
 }
 

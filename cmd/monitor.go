@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/ChainSafe/chainbridge-utils/msg"
 	log "github.com/ChainSafe/log15"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mapprotocol/monitor/chains/eth"
@@ -61,7 +60,7 @@ func run(ctx *cli.Context) error {
 		ac.Opts[config.MapChainID] = cfg.MapChain.Id
 		chainConfig := &config.ChainConfig{
 			Name:             ac.Name,
-			Id:               msg.ChainId(chainId),
+			Id:               config.ChainId(chainId),
 			Endpoint:         ac.Endpoint,
 			From:             ac.From,
 			Network:          ac.Network,
