@@ -37,6 +37,13 @@ func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr c
 		return nil, err
 	}
 
+	latestBlock, err := bs.TryLoadLatestBlock()
+	if err == nil {
+		if latestBlock.Cmp(cfg.StartBlock) == 1 {
+			cfg.StartBlock = latestBlock
+		}
+	}
+
 	stop := make(chan int)
 	conn := ethereum.NewConnection(cfg.Endpoint, true, kp, logger, cfg.GasLimit, cfg.MaxGasPrice,
 		cfg.GasMultiplier, cfg.EgsApiKey, cfg.EgsSpeed)
