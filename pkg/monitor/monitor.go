@@ -59,7 +59,7 @@ func (m *Monitor) sync() error {
 	var heightCount int64
 	var id = m.Cfg.StartBlock
 	if id.Uint64() == 0 {
-		id.SetUint64(222)
+		id.SetUint64(985)
 	}
 	for {
 		select {
@@ -101,19 +101,19 @@ func (m *Monitor) sync() error {
 				InitSql()
 				m.Log.Info("Monitor Mos", "id", id)
 				ret := BridgeTransactionInfo{}
-				err = db.QueryRow("select id, source_hash, source_chain_id, complete_time, created_at "+
+				err = db.QueryRow("select id, source_hash, source_chain_id, complete_time, timestamp "+
 					"from bridge_transaction_info where id = ?",
-					id.Uint64()).Scan(&ret.Id, &ret.SourceHash, &ret.SourceChainId, &ret.CompleteTime, &ret.CreatedAt)
+					id.Uint64()).Scan(&ret.Id, &ret.SourceHash, &ret.SourceChainId, &ret.CompleteTime, &ret.Timestamp)
 				if err != nil && !errors.Is(err, sql.ErrNoRows) {
 					m.Log.Error("Select Db failed ", "err", err)
 					time.Sleep(config.RetryLongInterval)
 					continue
 				}
-				if ret.SourceHash != nil && ret.Id != 0 && ret.CompleteTime == nil &&
-					(time.Now().Unix()-ret.CreatedAt.Unix()) >= 900 {
+				if ret.SourceHash != nil && ret.Id != 0 && ret.CompleteTime == nil && ret.Timestamp != nil &&
+					(time.Now().Unix()-ret.Timestamp.Unix()) >= 900 {
 					util.Alarm(context.Background(),
 						fmt.Sprintf("Mos Have Tx Not Cross The Chain hash=%s,sourceId=%d, createTime=%s",
-							ret.SourceHash, ret.SourceChainId, ret.CreatedAt))
+							ret.SourceHash, ret.SourceChainId, ret.Timestamp))
 				} else {
 					if !errors.Is(err, sql.ErrNoRows) {
 						id.Add(id, big.NewInt(1))
