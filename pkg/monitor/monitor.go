@@ -109,11 +109,12 @@ func (m *Monitor) sync() error {
 					time.Sleep(config.RetryLongInterval)
 					continue
 				}
-				if ret.SourceHash != nil && ret.Id != 0 && ret.CompleteTime == nil && ret.Timestamp != nil &&
-					(time.Now().Unix()-ret.Timestamp.Unix()) >= 900 {
-					util.Alarm(context.Background(),
-						fmt.Sprintf("Mos Have Tx Not Cross The Chain hash=%s,sourceId=%d, createTime=%s",
-							ret.SourceHash, ret.SourceChainId, ret.Timestamp))
+				if ret.CompleteTime == nil {
+					if ret.Timestamp != nil && (time.Now().Unix()-ret.Timestamp.Unix()) >= 900 {
+						util.Alarm(context.Background(),
+							fmt.Sprintf("Mos Have Tx Not Cross The Chain hash=%s,sourceId=%d, createTime=%s",
+								ret.SourceHash, ret.SourceChainId, ret.Timestamp))
+					}
 				} else {
 					if !errors.Is(err, sql.ErrNoRows) {
 						id.Add(id, big.NewInt(1))
