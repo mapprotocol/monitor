@@ -101,15 +101,15 @@ func (m *Monitor) sync() error {
 				InitSql()
 				m.Log.Info("Monitor Mos", "id", id)
 				ret := BridgeTransactionInfo{}
-				err = db.QueryRow("select id, source_hash, source_chain_id, complete_time, timestamp "+
+				err = db.QueryRow("select id, source_hash, source_chain_id, destination_hash, timestamp "+
 					"from bridge_transaction_info where id = ?",
-					id.Uint64()).Scan(&ret.Id, &ret.SourceHash, &ret.SourceChainId, &ret.CompleteTime, &ret.Timestamp)
+					id.Uint64()).Scan(&ret.Id, &ret.SourceHash, &ret.SourceChainId, &ret.DestinationHash, &ret.Timestamp)
 				if err != nil && !errors.Is(err, sql.ErrNoRows) {
 					m.Log.Error("Select Db failed ", "err", err)
 					time.Sleep(config.RetryLongInterval)
 					continue
 				}
-				if ret.CompleteTime == nil {
+				if ret.DestinationHash == nil {
 					if ret.Timestamp != nil && (time.Now().Unix()-ret.Timestamp.Unix()) >= 900 {
 						util.Alarm(context.Background(),
 							fmt.Sprintf("Mos Have Tx Not Cross The Chain hash=%s,sourceId=%d, createTime=%s",
