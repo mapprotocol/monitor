@@ -9,9 +9,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 )
 
-var Env = ""
+var (
+	Env     = ""
+	monitor = make(map[string]int64)
+)
 
 func init() {
 	Env = os.Getenv("compass")
@@ -22,6 +26,13 @@ func Alarm(ctx context.Context, msg string) {
 	if hooksUrl == "" {
 		log.Info("hooks is empty")
 		return
+	}
+	if v, ok := monitor[msg]; ok {
+		if time.Now().Unix()-v < 300 { // ignore same alarm in five minute
+			return
+		}
+	} else if !ok {
+		monitor[msg] = time.Now().Unix()
 	}
 	body, err := json.Marshal(map[string]interface{}{
 		"text": fmt.Sprintf("%s %s", Env, msg),
