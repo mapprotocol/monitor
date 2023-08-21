@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/urfave/cli/v2"
 	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // RawChainConfig is parsed directly from the config file and should be using to construct the core.ChainConfig
@@ -114,11 +114,11 @@ func loadConfig(file string, config *Config) error {
 }
 
 type OptConfig struct {
-	Name           string  // Human-readable chain name
-	Id             ChainId // ChainID
-	Endpoint       string  // url for rpc endpoint
-	From           string  // address of key to use
-	KeystorePath   string  // Location of keyfiles
+	Name           string   // Human-readable chain name
+	Id             ChainId  // ChainID
+	Endpoint       string   // url for rpc endpoint
+	From           []string // address of key to use
+	KeystorePath   string   // Location of keyfiles
 	GasLimit       *big.Int
 	MaxGasPrice    *big.Int
 	GasMultiplier  *big.Float
@@ -135,7 +135,7 @@ type OptConfig struct {
 func ParseOptConfig(chainCfg *ChainConfig) (*OptConfig, error) {
 	config := &OptConfig{
 		Id:             chainCfg.Id,
-		From:           chainCfg.From,
+		From:           strings.Split(chainCfg.From, ","),
 		Name:           chainCfg.Name,
 		Endpoint:       chainCfg.Endpoint,
 		KeystorePath:   DefaultKeystorePath,
