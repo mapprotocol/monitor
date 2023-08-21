@@ -26,7 +26,7 @@ func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr c
 		return nil, err
 	}
 
-	kpI, err := keystore.KeypairFromAddress(cfg.From, keystore.EthChain, cfg.KeystorePath, chainCfg.Insecure)
+	kpI, err := keystore.KeypairFromAddress(cfg.From[0], keystore.EthChain, cfg.KeystorePath, chainCfg.Insecure)
 	if err != nil {
 		return nil, err
 	}

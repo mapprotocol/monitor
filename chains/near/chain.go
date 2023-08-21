@@ -22,7 +22,7 @@ func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr c
 		return nil, err
 	}
 
-	kp, err := keystore.NearKeyPairFrom(chainCfg.Network, cfg.KeystorePath, cfg.From)
+	kp, err := keystore.NearKeyPairFrom(chainCfg.Network, cfg.KeystorePath, cfg.From[0])
 	if err != nil {
 		return nil, err
 	}

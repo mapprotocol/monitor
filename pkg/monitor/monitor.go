@@ -68,7 +68,7 @@ func (m *Monitor) sync() error {
 			return errors.New("polling terminated")
 		default:
 			for _, from := range m.Cfg.From {
-				m.balanceCheck(common.HexToAddress(from))
+				m.checkBalance(common.HexToAddress(from))
 			}
 
 			if m.Cfg.Id == m.Cfg.MapChainID {
@@ -123,7 +123,7 @@ func (m *Monitor) sync() error {
 	}
 }
 
-func (m *Monitor) balanceCheck(addr common.Address) {
+func (m *Monitor) checkBalance(addr common.Address) {
 	balance, err := m.Conn.Client().BalanceAt(context.Background(), addr, nil)
 	if err != nil {
 		m.Log.Error("Unable to get user balance failed", "from", addr, "err", err)
