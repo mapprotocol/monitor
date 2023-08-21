@@ -16,8 +16,8 @@ import (
 
 type Monitor struct {
 	*chain.Common
-	balance, syncedHeight *big.Int
-	timestamp             int64
+	balance, syncedHeight, waterLine, changeInterval *big.Int
+	timestamp                                        int64
 }
 
 func New(cs *chain.Common) *Monitor {
@@ -45,17 +45,18 @@ func (m *Monitor) Sync() error {
 // a block will be retried up to BlockRetryLimit times before continuing to the next block.
 // However，an error in synchronizing the log will cause the entire program to block
 func (m *Monitor) sync() error {
-	addr := common.HexToAddress(m.Cfg.From)
 	waterLine, ok := new(big.Int).SetString(m.Cfg.WaterLine, 10)
 	if !ok {
 		m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
 		return nil
 	}
+	m.waterLine = waterLine
 	changeInterval, ok := new(big.Int).SetString(m.Cfg.ChangeInterval, 10)
 	if !ok {
 		m.SysErr <- fmt.Errorf("%s changeInterval Not Number", m.Cfg.Name)
 		return nil
 	}
+	m.changeInterval = changeInterval
 	var heightCount int64
 	var id = m.Cfg.StartBlock
 	if id.Uint64() == 0 {
@@ -66,42 +67,15 @@ func (m *Monitor) sync() error {
 		case <-m.Stop:
 			return errors.New("polling terminated")
 		default:
-			balance, err := m.Conn.Client().BalanceAt(context.Background(), addr, nil)
-			if err != nil {
-				m.Log.Error("Unable to get user balance failed", "from", addr, "err", err)
-				time.Sleep(config.RetryLongInterval)
-				continue
-			}
-
-			m.Log.Info("Get balance result", "account", addr, "balance", balance)
-
-			if balance.Cmp(m.balance) != 0 {
-				m.balance = balance
-				m.timestamp = time.Now().Unix()
-			}
-
-			if balance.Cmp(waterLine) == -1 {
-				// alarm
-				util.Alarm(context.Background(),
-					fmt.Sprintf("Balance Less than %0.4f Balance,\nchains=%s addr=%s balance=%0.4f",
-						float64(new(big.Int).Div(waterLine, config.Wei).Int64())/float64(config.Wei.Int64()), m.Cfg.Name, m.Cfg.From,
-						float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
-			}
-
-			if (time.Now().Unix() - m.timestamp) > changeInterval.Int64() {
-				time.Sleep(time.Second * 5)
-				// alarm
-				util.Alarm(context.Background(),
-					fmt.Sprintf("No transaction occurred in addr in the last %d seconds,\n"+
-						"chains=%s addr=%s balance=%0.4f", changeInterval.Int64(), m.Cfg.Name, m.Cfg.From,
-						float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
+			for _, from := range m.Cfg.From {
+				m.balanceCheck(common.HexToAddress(from))
 			}
 
 			if m.Cfg.Id == m.Cfg.MapChainID {
 				InitSql()
 				m.Log.Info("Monitor Mos", "id", id)
 				ret := BridgeTransactionInfo{}
-				err = db.QueryRow("select id, source_hash, source_chain_id, destination_hash, timestamp "+
+				err := db.QueryRow("select id, source_hash, source_chain_id, destination_hash, timestamp "+
 					"from bridge_transaction_info where id = ?",
 					id.Uint64()).Scan(&ret.Id, &ret.SourceHash, &ret.SourceChainId, &ret.DestinationHash, &ret.Timestamp)
 				if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -147,4 +121,37 @@ func (m *Monitor) sync() error {
 			time.Sleep(config.BalanceRetryInterval)
 		}
 	}
+}
+
+func (m *Monitor) balanceCheck(addr common.Address) {
+	balance, err := m.Conn.Client().BalanceAt(context.Background(), addr, nil)
+	if err != nil {
+		m.Log.Error("Unable to get user balance failed", "from", addr, "err", err)
+		time.Sleep(config.RetryLongInterval)
+		return
+	}
+
+	m.Log.Info("Get balance result", "account", addr, "balance", balance)
+
+	if balance.Cmp(m.balance) != 0 {
+		m.balance = balance
+		m.timestamp = time.Now().Unix()
+	}
+
+	if balance.Cmp(m.waterLine) == -1 {
+		// alarm
+		util.Alarm(context.Background(),
+			fmt.Sprintf("Balance Less than %0.4f Balance,\nchains=%s addr=%s balance=%0.4f",
+				float64(new(big.Int).Div(m.waterLine, config.Wei).Int64())/float64(config.Wei.Int64()), m.Cfg.Name, m.Cfg.From,
+				float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
+	}
+
+	//if (time.Now().Unix() - m.timestamp) > changeInterval.Int64() {
+	//	time.Sleep(time.Second * 5)
+	//	// alarm
+	//	util.Alarm(context.Background(),
+	//		fmt.Sprintf("No transaction occurred in addr in the last %d seconds,\n"+
+	//			"chains=%s addr=%s balance=%0.4f", changeInterval.Int64(), m.Cfg.Name, m.Cfg.From,
+	//			float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
+	//}
 }
