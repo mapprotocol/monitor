@@ -142,16 +142,7 @@ func (m *Monitor) checkBalance(addr common.Address) {
 		// alarm
 		util.Alarm(context.Background(),
 			fmt.Sprintf("Balance Less than %0.4f Balance,\nchains=%s addr=%s balance=%0.4f",
-				float64(new(big.Int).Div(m.waterLine, config.Wei).Int64())/float64(config.Wei.Int64()), m.Cfg.Name, m.Cfg.From,
+				float64(new(big.Int).Div(m.waterLine, config.Wei).Int64())/float64(config.Wei.Int64()), m.Cfg.Name, addr,
 				float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
 	}
-
-	//if (time.Now().Unix() - m.timestamp) > changeInterval.Int64() {
-	//	time.Sleep(time.Second * 5)
-	//	// alarm
-	//	util.Alarm(context.Background(),
-	//		fmt.Sprintf("No transaction occurred in addr in the last %d seconds,\n"+
-	//			"chains=%s addr=%s balance=%0.4f", changeInterval.Int64(), m.Cfg.Name, m.Cfg.From,
-	//			float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
-	//}
 }
