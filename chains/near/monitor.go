@@ -14,8 +14,8 @@ import (
 
 type Monitor struct {
 	*CommonListen
-	balance, syncedHeight      *big.Int
-	timestamp, heightTimestamp int64
+	balance, syncedHeight, waterLine, changeInterval *big.Int
+	timestamp, heightTimestamp                       int64
 }
 
 func newMonitor(cs *CommonListen) *Monitor {
@@ -59,36 +59,8 @@ func (m *Monitor) sync() error {
 		case <-m.stop:
 			return errors.New("polling terminated")
 		default:
-			resp, err := m.conn.Client().AccountView(context.Background(), m.cfg.From, block.FinalityFinal())
-			if err != nil {
-				m.log.Error("Unable to get user balance failed", "from", m.cfg.From, "err", err)
-				time.Sleep(config.RetryLongInterval)
-				continue
-			}
-
-			m.log.Info("Get balance result", "account", m.cfg.From, "balance", resp.Amount.String())
-
-			v, ok := new(big.Int).SetString(resp.Amount.String(), 10)
-			if ok && v.Cmp(m.balance) != 0 {
-				m.balance = v
-				m.timestamp = time.Now().Unix()
-			}
-
-			conversion := new(big.Int).Div(v, config.WeiOfNear)
-			if conversion.Cmp(waterLine) == -1 {
-				// alarm
-				util.Alarm(context.Background(),
-					fmt.Sprintf("Balance Less than %d Near \nchain=%s addr=%s near=%d", waterLine.Int64(),
-						m.cfg.Name, m.cfg.From, conversion.Int64()))
-			}
-
-			if (time.Now().Unix() - m.timestamp) > changeInterval.Int64() {
-				time.Sleep(time.Second * 5)
-				// alarm
-				util.Alarm(context.Background(),
-					fmt.Sprintf("No transaction occurred in addr in the last %d seconds,\n"+
-						"chain=%s addr=%s near=%d", changeInterval.Int64(), m.cfg.Name, m.cfg.From,
-						v.Div(v, config.WeiOfNear)))
+			for _, from := range m.cfg.From {
+				m.checkBalance(from)
 			}
 
 			height, err := mapprotocol.Get2MapHeight(m.cfg.Id)
@@ -110,5 +82,30 @@ func (m *Monitor) sync() error {
 
 			time.Sleep(config.BalanceRetryInterval)
 		}
+	}
+}
+
+func (m *Monitor) checkBalance(addr string) {
+	resp, err := m.conn.Client().AccountView(context.Background(), addr, block.FinalityFinal())
+	if err != nil {
+		m.log.Error("Unable to get user balance failed", "from", m.cfg.From, "err", err)
+		time.Sleep(config.RetryLongInterval)
+		return
+	}
+
+	m.log.Info("Get balance result", "account", m.cfg.From, "balance", resp.Amount.String())
+
+	v, ok := new(big.Int).SetString(resp.Amount.String(), 10)
+	if ok && v.Cmp(m.balance) != 0 {
+		m.balance = v
+		m.timestamp = time.Now().Unix()
+	}
+
+	conversion := new(big.Int).Div(v, config.WeiOfNear)
+	if conversion.Cmp(m.waterLine) == -1 {
+		// alarm
+		util.Alarm(context.Background(),
+			fmt.Sprintf("Balance Less than %d Near \nchain=%s addr=%s near=%d", m.waterLine.Int64(),
+				m.cfg.Name, m.cfg.From, conversion.Int64()))
 	}
 }
