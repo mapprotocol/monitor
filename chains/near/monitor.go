@@ -54,6 +54,8 @@ func (m *Monitor) sync() error {
 		m.sysErr <- errors.New("near changeInterval Not Number")
 		return nil
 	}
+	m.waterLine = waterLine
+	m.changeInterval = changeInterval
 	for {
 		select {
 		case <-m.stop:
@@ -88,12 +90,12 @@ func (m *Monitor) sync() error {
 func (m *Monitor) checkBalance(addr string) {
 	resp, err := m.conn.Client().AccountView(context.Background(), addr, block.FinalityFinal())
 	if err != nil {
-		m.log.Error("Unable to get user balance failed", "from", m.cfg.From, "err", err)
+		m.log.Error("Unable to get user balance failed", "from", addr, "err", err)
 		time.Sleep(config.RetryLongInterval)
 		return
 	}
 
-	m.log.Info("Get balance result", "account", m.cfg.From, "balance", resp.Amount.String())
+	m.log.Info("Get balance result", "account", addr, "balance", resp.Amount.String())
 
 	v, ok := new(big.Int).SetString(resp.Amount.String(), 10)
 	if ok && v.Cmp(m.balance) != 0 {
@@ -106,6 +108,6 @@ func (m *Monitor) checkBalance(addr string) {
 		// alarm
 		util.Alarm(context.Background(),
 			fmt.Sprintf("Balance Less than %d Near \nchain=%s addr=%s near=%d", m.waterLine.Int64(),
-				m.cfg.Name, m.cfg.From, conversion.Int64()))
+				m.cfg.Name, addr, conversion.Int64()))
 	}
 }
