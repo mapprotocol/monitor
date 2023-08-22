@@ -141,7 +141,7 @@ func (m *Monitor) checkBalance(addr common.Address) {
 	if balance.Cmp(m.waterLine) == -1 {
 		// alarm
 		util.Alarm(context.Background(),
-			fmt.Sprintf("Balance Less than %0.4f Balance,\nchains=%s addr=%s balance=%0.4f",
+			fmt.Sprintf("Balance Less than %0.4f Balance,chains=%s addr=%s balance=%0.4f",
 				float64(new(big.Int).Div(m.waterLine, config.Wei).Int64())/float64(config.Wei.Int64()), m.Cfg.Name, addr,
 				float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
 	}
