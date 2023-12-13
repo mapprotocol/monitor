@@ -29,6 +29,19 @@ type Config struct {
 	MapChain     RawChainConfig   `json:"mapchain"`
 	Chains       []RawChainConfig `json:"chains"`
 	KeystorePath string           `json:"keystorePath,omitempty"`
+	Tk           Token            `json:"token"`
+	Genni        Api              `json:"genni"`
+}
+
+type Token struct {
+	BridgeAddr string   `json:"bridge_addr"`
+	Token      []string `json:"token"`
+	Contracts  []string `json:"contracts"`
+}
+
+type Api struct {
+	Key      string `json:"key"`
+	Endpoint string `json:"endpoint"`
 }
 
 func (c *Config) validate() error {
@@ -130,10 +143,12 @@ type OptConfig struct {
 	LightNode      common.Address // the lightnode to sync header
 	EgsApiKey      string         // API key for ethgasstation to query gas prices
 	EgsSpeed       string         // The speed which a transaction should be processed: average, fast, fastest. Default: fast
+	Tk             *Token         `json:"token"`
+	Genni          *Api           `json:"genni"`
 }
 
 // ParseOptConfig uses a core.ChainConfig to construct a corresponding Config
-func ParseOptConfig(chainCfg *ChainConfig) (*OptConfig, error) {
+func ParseOptConfig(chainCfg *ChainConfig, tks *Token, genni *Api) (*OptConfig, error) {
 	config := &OptConfig{
 		Id:             chainCfg.Id,
 		From:           strings.Split(chainCfg.From, ","),
@@ -148,6 +163,8 @@ func ParseOptConfig(chainCfg *ChainConfig) (*OptConfig, error) {
 		GasLimit:       big.NewInt(DefaultGasLimit),
 		MaxGasPrice:    big.NewInt(DefaultGasPrice),
 		GasMultiplier:  big.NewFloat(DefaultGasMultiplier),
+		Tk:             tks,
+		Genni:          genni,
 	}
 
 	if chainCfg.NearKeystorePath != "" {
