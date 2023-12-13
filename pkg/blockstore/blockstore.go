@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const PathPostfix = "./monitor"
@@ -77,7 +78,7 @@ func (b *Blockstore) TryLoadLatestBlock() (*big.Int, error) {
 		if err != nil {
 			return nil, err
 		}
-		block, _ := big.NewInt(0).SetString(string(dat), 10)
+		block, _ := big.NewInt(0).SetString(strings.TrimSpace(string(dat)), 10)
 		return block, nil
 	}
 	// Otherwise just return 0
