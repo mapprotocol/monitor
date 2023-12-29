@@ -31,9 +31,8 @@ func Alarm(ctx context.Context, msg string) {
 		if time.Now().Unix()-v < 300 { // ignore same alarm in five minute
 			return
 		}
-	} else if !ok {
-		monitor[msg] = time.Now().Unix()
 	}
+	monitor[msg] = time.Now().Unix()
 	body, err := json.Marshal(map[string]interface{}{
 		"text": fmt.Sprintf("%s %s", Env, msg),
 	})

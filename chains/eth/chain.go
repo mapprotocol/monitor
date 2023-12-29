@@ -20,8 +20,8 @@ type Chain struct {
 	listen chain.Listener // The listener of this chain
 }
 
-func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr chan<- error) (*Chain, error) {
-	cfg, err := config.ParseOptConfig(chainCfg)
+func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr chan<- error, tks *config.Token, genni *config.Api) (*Chain, error) {
+	cfg, err := config.ParseOptConfig(chainCfg, tks, genni)
 	if err != nil {
 		return nil, err
 	}

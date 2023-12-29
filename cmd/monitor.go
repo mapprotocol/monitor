@@ -79,7 +79,7 @@ func run(ctx *cli.Context) error {
 				return err
 			}
 		} else {
-			newChain, err = eth.InitializeChain(chainConfig, logger, sysErr)
+			newChain, err = eth.InitializeChain(chainConfig, logger, sysErr, &cfg.Tk, &cfg.Genni)
 			if err != nil {
 				return err
 			}

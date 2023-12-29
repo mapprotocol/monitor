@@ -107,7 +107,7 @@ func (m *Monitor) checkBalance(addr string) {
 	if conversion.Cmp(m.waterLine) == -1 {
 		// alarm
 		util.Alarm(context.Background(),
-			fmt.Sprintf("Balance Less than %d Near \nchain=%s addr=%s near=%d", m.waterLine.Int64(),
+			fmt.Sprintf("Balance Less than %d Near chain=%s addr=%s near=%d", m.waterLine.Int64(),
 				m.cfg.Name, addr, conversion.Int64()))
 	}
 }

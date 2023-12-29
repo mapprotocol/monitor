@@ -2,7 +2,7 @@ package monitor
 
 import (
 	"context"
-	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
@@ -10,9 +10,14 @@ import (
 	"github.com/mapprotocol/monitor/internal/config"
 	"github.com/mapprotocol/monitor/internal/mapprotocol"
 	"github.com/mapprotocol/monitor/pkg/util"
+	"io"
 	"math/big"
+	"net/http"
+	"strconv"
 	"time"
 )
+
+var dece = big.NewInt(1000000000000000000)
 
 type Monitor struct {
 	*chain.Common
@@ -72,31 +77,28 @@ func (m *Monitor) sync() error {
 			}
 
 			if m.Cfg.Id == m.Cfg.MapChainID {
-				InitSql()
-				m.Log.Info("Monitor Mos", "id", id)
-				ret := BridgeTransactionInfo{}
-				err := db.QueryRow("select id, source_hash, source_chain_id, destination_hash, timestamp "+
-					"from bridge_transaction_info where id = ?",
-					id.Uint64()).Scan(&ret.Id, &ret.SourceHash, &ret.SourceChainId, &ret.DestinationHash, &ret.Timestamp)
-				if err != nil && !errors.Is(err, sql.ErrNoRows) {
-					m.Log.Error("Select Db failed ", "err", err)
-					time.Sleep(config.RetryLongInterval)
-					continue
-				}
-				if ret.DestinationHash == nil {
-					if ret.Timestamp != nil && (time.Now().Unix()-ret.Timestamp.Unix()) >= 900 {
-						util.Alarm(context.Background(),
-							fmt.Sprintf("Mos Have Tx Not Cross The Chain hash=%s,sourceId=%d, createTime=%s",
-								ret.SourceHash, ret.SourceChainId, ret.Timestamp))
+				for idx, contract := range m.Cfg.Tk.Contracts {
+					contractAmount, err := mapprotocol.TotalSupply(contract)
+					if err != nil {
+						m.Log.Error("Check brc20 balance, get amount by contract", "token", m.Cfg.Tk.Token[idx], "err", err)
+						continue
 					}
-				} else {
-					if !errors.Is(err, sql.ErrNoRows) {
-						id.Add(id, big.NewInt(1))
-						err = m.BlockStore.StoreBlock(id)
-						if err != nil {
-							m.Log.Error("Failed to write latest block to blockstore", "id", id, "err", err)
-						}
+					contractAmount = contractAmount.Div(contractAmount, dece)
+					afterBridgeBal, err := TokenBalanceGD(m.Cfg.Genni.Endpoint, m.Cfg.Genni.Key, m.Cfg.Tk.BridgeAddr, m.Cfg.Tk.Token[idx])
+					if err != nil {
+						m.Log.Error("Check brc20 balance, get amount by genii", "token", m.Cfg.Tk.Token[idx], "err", err)
+						continue
 					}
+					if m.Cfg.Tk.Token[idx] == "roup" {
+						afterBridgeBal = afterBridgeBal + 4890000
+					}
+					m.Log.Info("Check brc20 balance, get amount", "token", m.Cfg.Tk.Token[idx], "bridgeBal", afterBridgeBal,
+						"contractAmount", contractAmount)
+					if afterBridgeBal < contractAmount.Int64() {
+						util.Alarm(context.Background(), fmt.Sprintf("Maintainer check brc20 balance token=%s, bridgeBal=%d, contractAmount=%v",
+							m.Cfg.Tk.Token[idx], afterBridgeBal, contractAmount))
+					}
+					time.Sleep(time.Second)
 				}
 			} else {
 				height, err := mapprotocol.Get2MapHeight(m.Cfg.Id)
@@ -141,8 +143,60 @@ func (m *Monitor) checkBalance(addr common.Address) {
 	if balance.Cmp(m.waterLine) == -1 {
 		// alarm
 		util.Alarm(context.Background(),
-			fmt.Sprintf("Balance Less than %0.4f Balance,\nchains=%s addr=%s balance=%0.4f",
+			fmt.Sprintf("Balance Less than %0.4f Balance,chains=%s addr=%s balance=%0.4f",
 				float64(new(big.Int).Div(m.waterLine, config.Wei).Int64())/float64(config.Wei.Int64()), m.Cfg.Name, addr,
 				float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
 	}
+}
+
+func TokenBalanceGD(endpoint, key, address, token string) (int64, error) {
+	path := fmt.Sprintf("/api/1/brc20/balance?address=%s&tick=%s&limit=1&offset=0", address, token)
+	url := fmt.Sprintf("%s%s", endpoint, path)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return 0, fmt.Errorf("assamble req failed, err is %v", err)
+	}
+	req.Header.Set("api-key", key)
+
+	r, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("do req failed, err is %v", err)
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return 0, fmt.Errorf("io.ReadAll failed, err is %v", err)
+	}
+	_ = r.Body.Close()
+
+	ret := &gdTokenBalanceResponse{}
+	if err = json.Unmarshal(body, ret); err != nil {
+		return 0, err
+	}
+	if ret.Code != 0 || ret.Message != "success" {
+		return 0, fmt.Errorf("failed to get token balance, code: %v, msg: %s", ret.Code, ret.Message)
+	}
+
+	if len(ret.Data.List) == 0 || ret.Data.List[0].OverallBalance == "" {
+		return 0, nil
+	}
+	balance, err := strconv.ParseFloat(ret.Data.List[0].OverallBalance, 64)
+	if err != nil {
+		return 0, fmt.Errorf("strconv.ParseFloat failed, err is %v", err)
+	}
+	return int64(balance), nil
+}
+
+type gdTokenBalanceResponse struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    struct {
+		List []struct {
+			Tick                string `json:"tick"`
+			Address             string `json:"address"`
+			OverallBalance      string `json:"overall_balance"`
+			TransferableBalance string `json:"transferable_balance"`
+			AvailableBalance    string `json:"available_balance"`
+		} `json:"list"`
+	} `json:"data"`
 }
