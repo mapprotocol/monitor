@@ -108,8 +108,7 @@ func (m *Monitor) sync() error {
 				} else {
 					if m.syncedHeight.Uint64() == height.Uint64() {
 						m.heightCount = m.heightCount + 1
-						if m.heightCount >= 20 {
-							m.Log.Info("Check maintainer sync height alarm", "syncHeight", height, "record", m.syncedHeight)
+						if m.heightCount >= m.Cfg.CheckHgtCount {
 							util.Alarm(context.Background(),
 								fmt.Sprintf("Maintainer Sync Height No change within 15 minutes chains=%s, height=%d",
 									m.Cfg.Name, height.Uint64()))

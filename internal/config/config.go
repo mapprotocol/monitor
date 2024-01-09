@@ -145,6 +145,7 @@ type OptConfig struct {
 	EgsSpeed       string         // The speed which a transaction should be processed: average, fast, fastest. Default: fast
 	Tk             *Token         `json:"token"`
 	Genni          *Api           `json:"genni"`
+	CheckHgtCount  int64
 }
 
 // ParseOptConfig uses a core.ChainConfig to construct a corresponding Config
@@ -165,6 +166,7 @@ func ParseOptConfig(chainCfg *ChainConfig, tks *Token, genni *Api) (*OptConfig, 
 		GasMultiplier:  big.NewFloat(DefaultGasMultiplier),
 		Tk:             tks,
 		Genni:          genni,
+		CheckHgtCount:  DefaultCheckHgtCount,
 	}
 
 	if chainCfg.NearKeystorePath != "" {
@@ -190,6 +192,14 @@ func ParseOptConfig(chainCfg *ChainConfig, tks *Token, genni *Api) (*OptConfig, 
 
 	if alarmSecond, ok := chainCfg.Opts[ChangeInterval]; ok && alarmSecond != "" {
 		config.ChangeInterval = alarmSecond
+	}
+
+	if checkHeightCount, ok := chainCfg.Opts[CheckHeightCount]; ok && checkHeightCount != "" {
+		count, err := strconv.Atoi(checkHeightCount)
+		if err != nil {
+			return nil, err
+		}
+		config.CheckHgtCount = int64(count)
 	}
 
 	return config, nil
