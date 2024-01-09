@@ -106,7 +106,7 @@ func (m *Monitor) sync() error {
 				if err != nil {
 					m.Log.Error("get2MapHeight failed", "err", err)
 				} else {
-					if m.syncedHeight == height {
+					if m.syncedHeight.Uint64() == height.Uint64() {
 						m.heightCount = m.heightCount + 1
 						if m.heightCount >= 20 {
 							m.Log.Info("Check maintainer sync height alarm", "syncHeight", height, "record", m.syncedHeight)
