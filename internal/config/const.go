@@ -30,13 +30,15 @@ const (
 	DefaultGasLimit      = 6721975
 	DefaultGasPrice      = 20000000000
 	DefaultGasMultiplier = 1
+	DefaultCheckHgtCount = 15
 )
 
 // Chain specific options
 var (
-	LightNode      = "lightnode"
-	WaterLine      = "waterLine"
-	ChangeInterval = "changeInterval"
+	LightNode        = "lightnode"
+	WaterLine        = "waterLine"
+	ChangeInterval   = "changeInterval"
+	CheckHeightCount = "checkHeightCount"
 )
 
 const (
