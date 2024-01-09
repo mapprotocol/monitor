@@ -21,6 +21,7 @@ var dece = big.NewInt(1000000000000000000)
 
 type Monitor struct {
 	*chain.Common
+	heightCount                                      int64
 	balance, syncedHeight, waterLine, changeInterval *big.Int
 	timestamp                                        int64
 }
@@ -62,7 +63,6 @@ func (m *Monitor) sync() error {
 		return nil
 	}
 	m.changeInterval = changeInterval
-	var heightCount int64
 	var id = m.Cfg.StartBlock
 	if id.Uint64() == 0 {
 		id.SetUint64(985)
@@ -102,19 +102,20 @@ func (m *Monitor) sync() error {
 				}
 			} else {
 				height, err := mapprotocol.Get2MapHeight(m.Cfg.Id)
-				m.Log.Info("Check Height", "syncHeight", height, "record", m.syncedHeight)
+				m.Log.Info("Check Height", "syncHeight", height, "record", m.syncedHeight, "heightCount", m.heightCount)
 				if err != nil {
 					m.Log.Error("get2MapHeight failed", "err", err)
 				} else {
 					if m.syncedHeight == height {
-						heightCount++
-						if heightCount >= 20 {
+						m.heightCount = m.heightCount + 1
+						if m.heightCount >= 20 {
+							m.Log.Info("Check maintainer sync height alarm", "syncHeight", height, "record", m.syncedHeight)
 							util.Alarm(context.Background(),
 								fmt.Sprintf("Maintainer Sync Height No change within 15 minutes chains=%s, height=%d",
 									m.Cfg.Name, height.Uint64()))
 						}
 					} else {
-						heightCount = 0
+						m.heightCount = 0
 					}
 					m.syncedHeight = height
 				}
