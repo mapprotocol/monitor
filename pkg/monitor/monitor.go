@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -84,13 +85,14 @@ func (m *Monitor) sync() error {
 						continue
 					}
 					contractAmount = contractAmount.Div(contractAmount, dece)
-					afterBridgeBal, err := TokenBalanceGD(m.Cfg.Genni.Endpoint, m.Cfg.Genni.Key, m.Cfg.Tk.BridgeAddr, m.Cfg.Tk.Token[idx])
+					afterBridgeBal, err := GetMulAddBalance(m.Cfg.Genni.Endpoint, m.Cfg.Genni.Key, m.Cfg.Tk.BridgeAddr, m.Cfg.Tk.Token[idx])
+					//afterBridgeBal, err := TokenBalanceGD(m.Cfg.Genni.Endpoint, m.Cfg.Genni.Key, m.Cfg.Tk.BridgeAddr, m.Cfg.Tk.Token[idx])
 					if err != nil {
 						m.Log.Error("Check brc20 balance, get amount by genii", "token", m.Cfg.Tk.Token[idx], "err", err)
 						continue
 					}
 					if m.Cfg.Tk.Token[idx] == "roup" {
-						afterBridgeBal = afterBridgeBal + 4890000
+						afterBridgeBal = afterBridgeBal + 900000
 					}
 					m.Log.Info("Check brc20 balance, get amount", "token", m.Cfg.Tk.Token[idx], "bridgeBal", afterBridgeBal,
 						"contractAmount", contractAmount)
@@ -147,6 +149,19 @@ func (m *Monitor) checkBalance(addr common.Address) {
 				float64(new(big.Int).Div(m.waterLine, config.Wei).Int64())/float64(config.Wei.Int64()), m.Cfg.Name, addr,
 				float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
 	}
+}
+
+func GetMulAddBalance(endpoint, key, bridge, token string) (int64, error) {
+	var ret int64
+	for _, b := range strings.Split(bridge, ",") {
+		afterBridgeBal, err := TokenBalanceGD(endpoint, key, b, token)
+		if err != nil {
+			return 0, err
+		}
+		ret += afterBridgeBal
+	}
+
+	return ret, nil
 }
 
 func TokenBalanceGD(endpoint, key, address, token string) (int64, error) {
