@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/ChainSafe/log15"
-	"github.com/mapprotocol/atlas/accounts/abi/bind"
 	nearclient "github.com/mapprotocol/near-api-go/pkg/client"
 	"github.com/mapprotocol/near-api-go/pkg/client/block"
 	"github.com/mapprotocol/near-api-go/pkg/types/key"
@@ -22,12 +21,12 @@ type Connection struct {
 	egsApiKey     string
 	egsSpeed      string
 	conn          *nearclient.Client
-	opts          *bind.TransactOpts
-	callOpts      *bind.CallOpts
-	nonce         uint64
-	optsLock      sync.Mutex
-	log           log15.Logger
-	stop          chan int // All routines should exit when this channel is closed
+	//opts          *bind.TransactOpts
+	//callOpts      *bind.CallOpts
+	nonce    uint64
+	optsLock sync.Mutex
+	log      log15.Logger
+	stop     chan int // All routines should exit when this channel is closed
 }
 
 func newConnection(endpoint string, http bool, kp *key.KeyPair, log log15.Logger, gasLimit, gasPrice *big.Int,
@@ -72,13 +71,13 @@ func (c *Connection) Client() *nearclient.Client {
 	return c.conn
 }
 
-func (c *Connection) Opts() *bind.TransactOpts {
-	return c.opts
-}
-
-func (c *Connection) CallOpts() *bind.CallOpts {
-	return c.callOpts
-}
+//func (c *Connection) Opts() *bind.TransactOpts {
+//	return c.opts
+//}
+//
+//func (c *Connection) CallOpts() *bind.CallOpts {
+//	return c.callOpts
+//}
 
 func (c *Connection) SafeEstimateGas(ctx context.Context) (*big.Int, error) {
 	return c.maxGasPrice, nil
