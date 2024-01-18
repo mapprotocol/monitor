@@ -144,11 +144,12 @@ func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) 
 			wei = 18
 		}
 
-		//fmt.Println("ret --------------- ", m.Cfg.Name, ret.Div(ret, util.ToWei(int64(1), int(wei))).Int64(), tk.WaterLine, tk.Name, tk.Addr)
-		if ret.Div(ret, util.ToWei(int64(1), int(wei))).Int64() < tk.WaterLine {
+		overage := ret.Div(ret, util.ToWei(int64(1), int(wei))).Int64()
+		m.Log.Info("Get Token result", "token", tk.Name, "overage", overage, "addr", tk.Addr)
+		if overage < tk.WaterLine {
 			// alarm
 			util.Alarm(context.Background(),
-				fmt.Sprintf("Token Less than waterLine ,chains=%s token=%s balance=%s", m.Cfg.Name, tk.Name, ret.String()))
+				fmt.Sprintf("Token Less than waterLine ,chains=%s token=%s overage=%d", m.Cfg.Name, tk.Name, overage))
 		}
 	}
 }
