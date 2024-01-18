@@ -16,44 +16,37 @@
 
 package ethclient
 
-import (
-	"math/big"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/mapprotocol/atlas/core/types"
-)
-
-// mapSenderFromServer is a types.Signer that remembers the sender address returned by the RPC
-// server. It is stored in the transaction's sender address cache to avoid an additional
-// request in TransactionSender.
-type mapSenderFromServer struct {
-	addr      common.Address
-	blockhash common.Hash
-}
-
-func setMAPSenderFromServer(tx *types.Transaction, addr common.Address, block common.Hash) {
-	// Use types.Sender for side-effect to store our signer into the cache.
-	types.Sender(&mapSenderFromServer{addr, block}, tx)
-}
-
-func (s *mapSenderFromServer) Equal(other types.Signer) bool {
-	os, ok := other.(*mapSenderFromServer)
-	return ok && os.blockhash == s.blockhash
-}
-
-func (s *mapSenderFromServer) Sender(tx *types.Transaction) (common.Address, error) {
-	if s.blockhash == (common.Hash{}) {
-		return common.Address{}, errNotCached
-	}
-	return s.addr, nil
-}
-
-func (s *mapSenderFromServer) ChainID() *big.Int {
-	panic("can't sign with senderFromServer")
-}
-func (s *mapSenderFromServer) Hash(tx *types.Transaction) common.Hash {
-	panic("can't sign with senderFromServer")
-}
-func (s *mapSenderFromServer) SignatureValues(tx *types.Transaction, sig []byte) (R, S, V *big.Int, err error) {
-	panic("can't sign with senderFromServer")
-}
+//// mapSenderFromServer is a types.Signer that remembers the sender address returned by the RPC
+//// server. It is stored in the transaction's sender address cache to avoid an additional
+//// request in TransactionSender.
+//type mapSenderFromServer struct {
+//	addr      common.Address
+//	blockhash common.Hash
+//}
+//
+//func setMAPSenderFromServer(tx *types.Transaction, addr common.Address, block common.Hash) {
+//	// Use types.Sender for side-effect to store our signer into the cache.
+//	types.Sender(&mapSenderFromServer{addr, block}, tx)
+//}
+//
+//func (s *mapSenderFromServer) Equal(other types.Signer) bool {
+//	os, ok := other.(*mapSenderFromServer)
+//	return ok && os.blockhash == s.blockhash
+//}
+//
+//func (s *mapSenderFromServer) Sender(tx *types.Transaction) (common.Address, error) {
+//	if s.blockhash == (common.Hash{}) {
+//		return common.Address{}, errNotCached
+//	}
+//	return s.addr, nil
+//}
+//
+//func (s *mapSenderFromServer) ChainID() *big.Int {
+//	panic("can't sign with senderFromServer")
+//}
+//func (s *mapSenderFromServer) Hash(tx *types.Transaction) common.Hash {
+//	panic("can't sign with senderFromServer")
+//}
+//func (s *mapSenderFromServer) SignatureValues(tx *types.Transaction, sig []byte) (R, S, V *big.Int, err error) {
+//	panic("can't sign with senderFromServer")
+//}

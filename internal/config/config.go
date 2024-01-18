@@ -15,14 +15,15 @@ import (
 
 // RawChainConfig is parsed directly from the config file and should be using to construct the core.ChainConfig
 type RawChainConfig struct {
-	Name         string            `json:"name"`
-	Type         string            `json:"type"`
-	Id           string            `json:"id"`       // ChainID
-	Endpoint     string            `json:"endpoint"` // url for rpc endpoint
-	From         string            `json:"from"`     // address of key to use
-	Network      string            `json:"network"`
-	KeystorePath string            `json:"keystorePath"`
-	Opts         map[string]string `json:"opts"`
+	Name          string            `json:"name"`
+	Type          string            `json:"type"`
+	Id            string            `json:"id"`       // ChainID
+	Endpoint      string            `json:"endpoint"` // url for rpc endpoint
+	From          string            `json:"from"`     // address of key to use
+	Network       string            `json:"network"`
+	KeystorePath  string            `json:"keystorePath"`
+	Opts          map[string]string `json:"opts"`
+	ContractToken []ContractToken   `json:"contractToken"`
 }
 
 type Config struct {
@@ -39,6 +40,18 @@ type Token struct {
 	Contracts  []string `json:"contracts"`
 }
 
+type ContractToken struct {
+	Address string     `json:"address"`
+	Tokens  []EthToken `json:"tokens"`
+}
+
+type EthToken struct {
+	Name      string `json:"name"`
+	Addr      string `json:"addr"`
+	WaterLine int64  `json:"waterLine"`
+	Wei       int64  `json:"wei"`
+}
+
 type Api struct {
 	Key      string `json:"key"`
 	Endpoint string `json:"endpoint"`
@@ -48,9 +61,6 @@ func (c *Config) validate() error {
 	for _, chain := range c.Chains {
 		if chain.Id == "" {
 			return fmt.Errorf("required field chains.Id empty for chains %s", chain.Id)
-		}
-		if chain.Type == "" {
-			return fmt.Errorf("required field chains.Type empty for chains %s", chain.Id)
 		}
 		if chain.Endpoint == "" {
 			return fmt.Errorf("required field chains.Endpoint empty for chains %s", chain.Id)
@@ -143,9 +153,10 @@ type OptConfig struct {
 	LightNode      common.Address // the lightnode to sync header
 	EgsApiKey      string         // API key for ethgasstation to query gas prices
 	EgsSpeed       string         // The speed which a transaction should be processed: average, fast, fastest. Default: fast
-	Tk             *Token         `json:"token"`
-	Genni          *Api           `json:"genni"`
+	Tk             *Token
+	Genni          *Api
 	CheckHgtCount  int64
+	ContractToken  []ContractToken
 }
 
 // ParseOptConfig uses a core.ChainConfig to construct a corresponding Config
@@ -167,6 +178,7 @@ func ParseOptConfig(chainCfg *ChainConfig, tks *Token, genni *Api) (*OptConfig, 
 		Tk:             tks,
 		Genni:          genni,
 		CheckHgtCount:  DefaultCheckHgtCount,
+		ContractToken:  chainCfg.ContractToken,
 	}
 
 	if chainCfg.NearKeystorePath != "" {

@@ -16,6 +16,7 @@ import (
 
 var (
 	totalSupplyMethod = "totalSupply"
+	BalanceOfyMethod  = "balanceOf"
 	Token, _          = abi.JSON(strings.NewReader(config.TokenAbi))
 	Height, _         = abi.JSON(strings.NewReader(config.HeightAbiJson))
 	LightManger, _    = abi.JSON(strings.NewReader(config.LightMangerAbi))

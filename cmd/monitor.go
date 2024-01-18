@@ -41,10 +41,6 @@ func run(ctx *cli.Context) error {
 	// Used to signal core shutdown due to fatal error
 	sysErr := make(chan error)
 
-	//mapId, err := strconv.Atoi(cfg.MapChain.Id)
-	//if err != nil {
-	//	return err
-	//}
 	c := core.New(sysErr)
 	// merge map chains
 	allChains := make([]config.RawChainConfig, 0, len(cfg.Chains)+1)
@@ -67,6 +63,7 @@ func run(ctx *cli.Context) error {
 			KeystorePath:     ks,
 			NearKeystorePath: ac.KeystorePath,
 			Opts:             ac.Opts,
+			ContractToken:    ac.ContractToken,
 		}
 		var (
 			newChain chain.Chain
@@ -85,7 +82,6 @@ func run(ctx *cli.Context) error {
 			}
 		}
 		if idx == 0 {
-			// assign global map conn
 			mapprotocol.GlobalMapConn = newChain.(*eth.Chain).EthClient()
 			mapprotocol.InitOtherChain2MapHeight(common.HexToAddress(chainConfig.Opts[config.LightNode]))
 		}

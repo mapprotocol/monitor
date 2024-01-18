@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mapprotocol/monitor/internal/chain"
 	"github.com/mapprotocol/monitor/internal/config"
@@ -22,9 +23,9 @@ var dece = big.NewInt(1000000000000000000)
 
 type Monitor struct {
 	*chain.Common
-	heightCount                                      int64
-	balance, syncedHeight, waterLine, changeInterval *big.Int
-	timestamp                                        int64
+	heightCount                      int64
+	balance, syncedHeight, waterLine *big.Int
+	timestamp                        int64
 }
 
 func New(cs *chain.Common) *Monitor {
@@ -58,16 +59,6 @@ func (m *Monitor) sync() error {
 		return nil
 	}
 	m.waterLine = waterLine
-	changeInterval, ok := new(big.Int).SetString(m.Cfg.ChangeInterval, 10)
-	if !ok {
-		m.SysErr <- fmt.Errorf("%s changeInterval Not Number", m.Cfg.Name)
-		return nil
-	}
-	m.changeInterval = changeInterval
-	var id = m.Cfg.StartBlock
-	if id.Uint64() == 0 {
-		id.SetUint64(985)
-	}
 	for {
 		select {
 		case <-m.Stop:
@@ -77,49 +68,14 @@ func (m *Monitor) sync() error {
 				m.checkBalance(common.HexToAddress(from))
 			}
 
+			for _, ct := range m.Cfg.ContractToken {
+				m.checkToken(common.HexToAddress(ct.Address), ct.Tokens)
+			}
+
 			if m.Cfg.Id == m.Cfg.MapChainID {
-				for idx, contract := range m.Cfg.Tk.Contracts {
-					contractAmount, err := mapprotocol.TotalSupply(contract)
-					if err != nil {
-						m.Log.Error("Check brc20 balance, get amount by contract", "token", m.Cfg.Tk.Token[idx], "err", err)
-						continue
-					}
-					contractAmount = contractAmount.Div(contractAmount, dece)
-					afterBridgeBal, err := GetMulAddBalance(m.Cfg.Genni.Endpoint, m.Cfg.Genni.Key, m.Cfg.Tk.BridgeAddr, m.Cfg.Tk.Token[idx])
-					//afterBridgeBal, err := TokenBalanceGD(m.Cfg.Genni.Endpoint, m.Cfg.Genni.Key, m.Cfg.Tk.BridgeAddr, m.Cfg.Tk.Token[idx])
-					if err != nil {
-						m.Log.Error("Check brc20 balance, get amount by genii", "token", m.Cfg.Tk.Token[idx], "err", err)
-						continue
-					}
-					if m.Cfg.Tk.Token[idx] == "roup" {
-						afterBridgeBal = afterBridgeBal + 900000
-					}
-					m.Log.Info("Check brc20 balance, get amount", "token", m.Cfg.Tk.Token[idx], "bridgeBal", afterBridgeBal,
-						"contractAmount", contractAmount)
-					if afterBridgeBal < contractAmount.Int64() {
-						util.Alarm(context.Background(), fmt.Sprintf("Maintainer check brc20 balance token=%s, bridgeBal=%d, contractAmount=%v",
-							m.Cfg.Tk.Token[idx], afterBridgeBal, contractAmount))
-					}
-					time.Sleep(time.Second)
-				}
+				m.mapCheck()
 			} else {
-				height, err := mapprotocol.Get2MapHeight(m.Cfg.Id)
-				m.Log.Info("Check Height", "syncHeight", height, "record", m.syncedHeight, "heightCount", m.heightCount)
-				if err != nil {
-					m.Log.Error("get2MapHeight failed", "err", err)
-				} else {
-					if m.syncedHeight.Uint64() == height.Uint64() {
-						m.heightCount = m.heightCount + 1
-						if m.heightCount >= m.Cfg.CheckHgtCount {
-							util.Alarm(context.Background(),
-								fmt.Sprintf("Maintainer Sync Height No change within 15 minutes chains=%s, height=%d",
-									m.Cfg.Name, height.Uint64()))
-						}
-					} else {
-						m.heightCount = 0
-					}
-					m.syncedHeight = height
-				}
+				m.OtherChainCheck()
 			}
 
 			time.Sleep(config.BalanceRetryInterval)
@@ -148,6 +104,99 @@ func (m *Monitor) checkBalance(addr common.Address) {
 			fmt.Sprintf("Balance Less than %0.4f Balance,chains=%s addr=%s balance=%0.4f",
 				float64(new(big.Int).Div(m.waterLine, config.Wei).Int64())/float64(config.Wei.Int64()), m.Cfg.Name, addr,
 				float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
+	}
+}
+
+func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) {
+	for _, tk := range tokens {
+		ad := common.HexToAddress(tk.Addr)
+		input, err := mapprotocol.PackInput(mapprotocol.Token, mapprotocol.BalanceOfyMethod, contract)
+		if err != nil {
+			continue
+		}
+		outPut, err := m.Conn.Client().CallContract(context.Background(),
+			ethereum.CallMsg{
+				From: config.ZeroAddress,
+				To:   &ad,
+				Data: input,
+			},
+			nil,
+		)
+		if err != nil {
+			m.Log.Error("CheckToken callContract verify failed", "err", err.Error(), "to", ad)
+			continue
+		}
+
+		resp, err := mapprotocol.Token.Methods[mapprotocol.BalanceOfyMethod].Outputs.Unpack(outPut)
+		if err != nil {
+			m.Log.Error("CheckToken Proof call failed ", "err", err.Error())
+			continue
+		}
+
+		var ret *big.Int
+		err = mapprotocol.Token.Methods[mapprotocol.BalanceOfyMethod].Outputs.Copy(&ret, resp)
+		if err != nil {
+			continue
+		}
+
+		wei := tk.Wei
+		if wei == 0 {
+			wei = 18
+		}
+
+		//fmt.Println("ret --------------- ", m.Cfg.Name, ret.Div(ret, util.ToWei(int64(1), int(wei))).Int64(), tk.WaterLine, tk.Name, tk.Addr)
+		if ret.Div(ret, util.ToWei(int64(1), int(wei))).Int64() < tk.WaterLine {
+			// alarm
+			util.Alarm(context.Background(),
+				fmt.Sprintf("Token Less than waterLine ,chains=%s token=%s balance=%s", m.Cfg.Name, tk.Name, ret.String()))
+		}
+	}
+}
+
+func (m *Monitor) mapCheck() {
+	for idx, contract := range m.Cfg.Tk.Contracts {
+		contractAmount, err := mapprotocol.TotalSupply(contract)
+		if err != nil {
+			m.Log.Error("Check brc20 balance, get amount by contract", "token", m.Cfg.Tk.Token[idx], "err", err)
+			continue
+		}
+		contractAmount = contractAmount.Div(contractAmount, dece)
+		afterBridgeBal, err := GetMulAddBalance(m.Cfg.Genni.Endpoint, m.Cfg.Genni.Key, m.Cfg.Tk.BridgeAddr, m.Cfg.Tk.Token[idx])
+		//afterBridgeBal, err := TokenBalanceGD(m.Cfg.Genni.Endpoint, m.Cfg.Genni.Key, m.Cfg.Tk.BridgeAddr, m.Cfg.Tk.Token[idx])
+		if err != nil {
+			m.Log.Error("Check brc20 balance, get amount by genii", "token", m.Cfg.Tk.Token[idx], "err", err)
+			continue
+		}
+		if m.Cfg.Tk.Token[idx] == "roup" {
+			afterBridgeBal = afterBridgeBal + 900000
+		}
+		m.Log.Info("Check brc20 balance, get amount", "token", m.Cfg.Tk.Token[idx], "bridgeBal", afterBridgeBal,
+			"contractAmount", contractAmount)
+		if afterBridgeBal < contractAmount.Int64() {
+			util.Alarm(context.Background(), fmt.Sprintf("Maintainer check brc20 balance token=%s, bridgeBal=%d, contractAmount=%v",
+				m.Cfg.Tk.Token[idx], afterBridgeBal, contractAmount))
+		}
+		time.Sleep(time.Second)
+	}
+}
+
+func (m *Monitor) OtherChainCheck() {
+	height, err := mapprotocol.Get2MapHeight(m.Cfg.Id)
+	m.Log.Info("Check Height", "syncHeight", height, "record", m.syncedHeight, "heightCount", m.heightCount)
+	if err != nil {
+		m.Log.Error("get2MapHeight failed", "err", err)
+	} else {
+		if m.syncedHeight.Uint64() == height.Uint64() {
+			m.heightCount = m.heightCount + 1
+			if m.heightCount >= m.Cfg.CheckHgtCount {
+				util.Alarm(context.Background(),
+					fmt.Sprintf("Maintainer Sync Height No change within 15 minutes chains=%s, height=%d",
+						m.Cfg.Name, height.Uint64()))
+			}
+		} else {
+			m.heightCount = 0
+		}
+		m.syncedHeight = height
 	}
 }
 

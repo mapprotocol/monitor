@@ -14,8 +14,8 @@ import (
 
 type Monitor struct {
 	*CommonListen
-	balance, syncedHeight, waterLine, changeInterval *big.Int
-	timestamp, heightTimestamp                       int64
+	balance, syncedHeight, waterLine *big.Int
+	timestamp, heightTimestamp       int64
 }
 
 func newMonitor(cs *CommonListen) *Monitor {
@@ -55,7 +55,6 @@ func (m *Monitor) sync() error {
 		return nil
 	}
 	m.waterLine = waterLine
-	m.changeInterval = changeInterval
 	for {
 		select {
 		case <-m.stop:
@@ -78,7 +77,7 @@ func (m *Monitor) sync() error {
 					time.Sleep(time.Second * 30)
 					// alarm
 					util.Alarm(context.Background(),
-						fmt.Sprintf("Near2Map height in %d seconds no change, height=%d\n", m.syncedHeight.Uint64()))
+						fmt.Sprintf("Near2Map height in %d seconds no change, height=%d", changeInterval.Int64(), m.syncedHeight.Uint64()))
 				}
 			}
 
