@@ -6,10 +6,10 @@ require (
 	github.com/ChainSafe/chainbridge-utils v1.0.6
 	github.com/ChainSafe/log15 v1.0.0
 	github.com/ethereum/go-ethereum v1.10.10
-	github.com/go-sql-driver/mysql v1.4.1
 	github.com/mapprotocol/atlas v1.1.0
 	github.com/mapprotocol/near-api-go v0.0.0-20220801061430-b9e1d4580dc5
 	github.com/pkg/errors v0.9.1
+	github.com/shopspring/decimal v1.2.0
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/crypto v0.6.0
@@ -83,7 +83,6 @@ require (
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
-	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
