@@ -162,8 +162,15 @@ func (m *Monitor) mapCheck() {
 			continue
 		}
 		contractAmount = contractAmount.Div(contractAmount, dece)
+
+		lockAmount, err := mapprotocol.BalanceOf(contract, common.HexToAddress(m.Cfg.Tk.MapBridge))
+		if err != nil {
+			m.Log.Error("Check brc20 balance, get lock amount by contract", "token", m.Cfg.Tk.Token[idx], "err", err)
+			continue
+		}
+		lockAmount = lockAmount.Div(lockAmount, dece)
+
 		afterBridgeBal, err := GetMulAddBalance(m.Cfg.Genni.Endpoint, m.Cfg.Genni.Key, m.Cfg.Tk.BridgeAddr, m.Cfg.Tk.Token[idx])
-		//afterBridgeBal, err := TokenBalanceGD(m.Cfg.Genni.Endpoint, m.Cfg.Genni.Key, m.Cfg.Tk.BridgeAddr, m.Cfg.Tk.Token[idx])
 		if err != nil {
 			m.Log.Error("Check brc20 balance, get amount by genii", "token", m.Cfg.Tk.Token[idx], "err", err)
 			continue
@@ -172,8 +179,8 @@ func (m *Monitor) mapCheck() {
 			afterBridgeBal = afterBridgeBal + 900000
 		}
 		m.Log.Info("Check brc20 balance, get amount", "token", m.Cfg.Tk.Token[idx], "bridgeBal", afterBridgeBal,
-			"contractAmount", contractAmount)
-		if afterBridgeBal < contractAmount.Int64() {
+			"contractAmount", contractAmount, "lockAmount", lockAmount)
+		if afterBridgeBal != (contractAmount.Int64() - lockAmount.Int64()) {
 			util.Alarm(context.Background(), fmt.Sprintf("Maintainer check brc20 balance token=%s, bridgeBal=%d, contractAmount=%v",
 				m.Cfg.Tk.Token[idx], afterBridgeBal, contractAmount))
 		}

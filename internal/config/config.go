@@ -36,6 +36,7 @@ type Config struct {
 
 type Token struct {
 	BridgeAddr string   `json:"bridge_addr"`
+	MapBridge  string   `json:"map_bridge"`
 	Token      []string `json:"token"`
 	Contracts  []string `json:"contracts"`
 }
