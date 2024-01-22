@@ -144,11 +144,12 @@ func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) 
 			wei = 18
 		}
 
-		//fmt.Println("ret --------------- ", m.Cfg.Name, ret.Div(ret, util.ToWei(int64(1), int(wei))).Int64(), tk.WaterLine, tk.Name, tk.Addr)
-		if ret.Div(ret, util.ToWei(int64(1), int(wei))).Int64() < tk.WaterLine {
+		overage := ret.Div(ret, util.ToWei(int64(1), int(wei))).Int64()
+		m.Log.Info("Get Token result", "token", tk.Name, "overage", overage, "addr", tk.Addr)
+		if overage < tk.WaterLine {
 			// alarm
 			util.Alarm(context.Background(),
-				fmt.Sprintf("Token Less than waterLine ,chains=%s token=%s balance=%s", m.Cfg.Name, tk.Name, ret.String()))
+				fmt.Sprintf("Token Less than waterLine ,chains=%s token=%s overage=%d", m.Cfg.Name, tk.Name, overage))
 		}
 	}
 }
@@ -161,8 +162,15 @@ func (m *Monitor) mapCheck() {
 			continue
 		}
 		contractAmount = contractAmount.Div(contractAmount, dece)
+
+		lockAmount, err := mapprotocol.BalanceOf(contract, common.HexToAddress(m.Cfg.Tk.MapBridge))
+		if err != nil {
+			m.Log.Error("Check brc20 balance, get lock amount by contract", "token", m.Cfg.Tk.Token[idx], "err", err)
+			continue
+		}
+		lockAmount = lockAmount.Div(lockAmount, dece)
+
 		afterBridgeBal, err := GetMulAddBalance(m.Cfg.Genni.Endpoint, m.Cfg.Genni.Key, m.Cfg.Tk.BridgeAddr, m.Cfg.Tk.Token[idx])
-		//afterBridgeBal, err := TokenBalanceGD(m.Cfg.Genni.Endpoint, m.Cfg.Genni.Key, m.Cfg.Tk.BridgeAddr, m.Cfg.Tk.Token[idx])
 		if err != nil {
 			m.Log.Error("Check brc20 balance, get amount by genii", "token", m.Cfg.Tk.Token[idx], "err", err)
 			continue
@@ -171,8 +179,8 @@ func (m *Monitor) mapCheck() {
 			afterBridgeBal = afterBridgeBal + 900000
 		}
 		m.Log.Info("Check brc20 balance, get amount", "token", m.Cfg.Tk.Token[idx], "bridgeBal", afterBridgeBal,
-			"contractAmount", contractAmount)
-		if afterBridgeBal < contractAmount.Int64() {
+			"contractAmount", contractAmount, "lockAmount", lockAmount)
+		if afterBridgeBal != (contractAmount.Int64() - lockAmount.Int64()) {
 			util.Alarm(context.Background(), fmt.Sprintf("Maintainer check brc20 balance token=%s, bridgeBal=%d, contractAmount=%v",
 				m.Cfg.Tk.Token[idx], afterBridgeBal, contractAmount))
 		}

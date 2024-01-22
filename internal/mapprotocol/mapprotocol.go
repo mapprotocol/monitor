@@ -85,7 +85,7 @@ func TotalSupply(to string) (*big.Int, error) {
 		nil,
 	)
 	if err != nil {
-		log.Error("Mcs callContract verify failed", "err", err.Error())
+		log.Error("TotalSupply callContract verify failed", "err", err.Error())
 		return nil, err
 	}
 
@@ -101,5 +101,39 @@ func TotalSupply(to string) (*big.Int, error) {
 		return nil, fmt.Errorf("proof copy failed, err is %v", err)
 	}
 
+	return ret, nil
+}
+
+func BalanceOf(to string, holder common.Address) (*big.Int, error) {
+	input, err := PackInput(Token, BalanceOfyMethod, holder)
+	if err != nil {
+		log.Error("Proof call failed ", "err", err.Error())
+		return nil, err
+	}
+	toC := common.HexToAddress(to)
+	outPut, err := GlobalMapConn.CallContract(context.Background(),
+		ethereum.CallMsg{
+			From: config.ZeroAddress,
+			To:   &toC,
+			Data: input,
+		},
+		nil,
+	)
+	if err != nil {
+		log.Error("BalanceOf callContract verify failed", "err", err.Error())
+		return nil, err
+	}
+
+	resp, err := Token.Methods[BalanceOfyMethod].Outputs.Unpack(outPut)
+	if err != nil {
+		log.Error("BalanceOf Proof call failed ", "err", err.Error())
+		return nil, err
+	}
+
+	var ret *big.Int
+	err = Token.Methods[BalanceOfyMethod].Outputs.Copy(&ret, resp)
+	if err != nil {
+		return nil, err
+	}
 	return ret, nil
 }
