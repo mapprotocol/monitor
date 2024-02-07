@@ -105,6 +105,14 @@ func (m *Monitor) checkBalance(addr common.Address) {
 				float64(new(big.Int).Div(m.waterLine, config.Wei).Int64())/float64(config.Wei.Int64()), m.Cfg.Name, addr,
 				float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
 	}
+
+	now := time.Now()
+	if now.Weekday() == time.Wednesday && now.Hour() == 12 && now.Minute() == 10 {
+		util.Alarm(context.Background(),
+			fmt.Sprintf("Address Balance have %0.4f Balance,chains=%s addr=%s balance=%0.4f",
+				float64(new(big.Int).Div(m.waterLine, config.Wei).Int64())/float64(config.Wei.Int64()), m.Cfg.Name, addr,
+				float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
+	}
 }
 
 func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) {
@@ -180,8 +188,8 @@ func (m *Monitor) mapCheck() {
 		}
 		m.Log.Info("Check brc20 balance, get amount", "token", m.Cfg.Tk.Token[idx], "bridgeBal", afterBridgeBal,
 			"contractAmount", contractAmount, "lockAmount", lockAmount)
-		if afterBridgeBal != (contractAmount.Int64() - lockAmount.Int64()) {
-			util.Alarm(context.Background(), fmt.Sprintf("Maintainer check brc20 balance token=%s, bridgeBal=%d, contractAmount=%v",
+		if afterBridgeBal < (contractAmount.Int64() - lockAmount.Int64()) {
+			util.Alarm(context.Background(), fmt.Sprintf("check brc20 balance token=%s, bridgeBal=%d, contractAmount=%v",
 				m.Cfg.Tk.Token[idx], afterBridgeBal, contractAmount))
 		}
 		time.Sleep(time.Second)
@@ -198,7 +206,7 @@ func (m *Monitor) OtherChainCheck() {
 			m.heightCount = m.heightCount + 1
 			if m.heightCount >= m.Cfg.CheckHgtCount {
 				util.Alarm(context.Background(),
-					fmt.Sprintf("Maintainer Sync Height No change within 15 minutes chains=%s, height=%d",
+					fmt.Sprintf("Sync Height No change within 15 minutes chains=%s, height=%d",
 						m.Cfg.Name, height.Uint64()))
 			}
 		} else {
