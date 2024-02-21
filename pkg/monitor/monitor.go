@@ -109,8 +109,9 @@ func (m *Monitor) checkBalance(addr common.Address) {
 	now := time.Now().UTC()
 	if now.Weekday() == time.Monday && now.Hour() == 11 && now.Minute() == 10 {
 		util.Alarm(context.Background(),
-			fmt.Sprintf("Address Balance have,chains=%s addr=%s balance=%0.4f", m.Cfg.Name, addr,
-				float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
+			fmt.Sprintf("Report Address Balance have,chains=%s addr=%s balance=%0.4f,waterLine=%0.4f", m.Cfg.Name, addr,
+				float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64()),
+				float64(new(big.Int).Div(m.waterLine, config.Wei).Int64())/float64(config.Wei.Int64())))
 	}
 }
 
