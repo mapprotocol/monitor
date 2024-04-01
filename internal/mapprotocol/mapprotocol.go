@@ -17,6 +17,7 @@ import (
 var (
 	totalSupplyMethod = "totalSupply"
 	BalanceOfyMethod  = "balanceOf"
+	MinterCapMethod   = "minterCap"
 	Token, _          = abi.JSON(strings.NewReader(config.TokenAbi))
 	Height, _         = abi.JSON(strings.NewReader(config.HeightAbiJson))
 	LightManger, _    = abi.JSON(strings.NewReader(config.LightMangerAbi))
@@ -136,4 +137,42 @@ func BalanceOf(to string, holder common.Address) (*big.Int, error) {
 		return nil, err
 	}
 	return ret, nil
+}
+
+type MinterCapResp struct {
+	Cap   *big.Int
+	Total *big.Int
+}
+
+func Call(to, method string, holder common.Address, ret interface{}) error {
+	input, err := PackInput(Token, method, holder)
+	if err != nil {
+		log.Error("Proof call failed ", "err", err.Error())
+		return err
+	}
+	toC := common.HexToAddress(to)
+	outPut, err := GlobalMapConn.CallContract(context.Background(),
+		ethereum.CallMsg{
+			From: config.ZeroAddress,
+			To:   &toC,
+			Data: input,
+		},
+		nil,
+	)
+	if err != nil {
+		log.Error("BalanceOf callContract verify failed", "err", err.Error())
+		return err
+	}
+
+	resp, err := Token.Methods[method].Outputs.Unpack(outPut)
+	if err != nil {
+		log.Error("BalanceOf Proof call failed ", "err", err.Error())
+		return err
+	}
+
+	err = Token.Methods[method].Outputs.Copy(ret, resp)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -5,6 +5,8 @@ go 1.19
 require (
 	github.com/ChainSafe/chainbridge-utils v1.0.6
 	github.com/ChainSafe/log15 v1.0.0
+	github.com/btcsuite/btcd v0.22.0-beta.0.20220111032746-97732e52810c
+	github.com/btcsuite/btcd/btcutil v1.1.0
 	github.com/ethereum/go-ethereum v1.10.10
 	github.com/mapprotocol/near-api-go v0.0.0-20220801061430-b9e1d4580dc5
 	github.com/pkg/errors v0.9.1
@@ -20,13 +22,14 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
 	github.com/allegro/bigcache v1.2.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd v0.21.0-beta // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.1.0 // indirect
 	github.com/centrifuge/go-substrate-rpc-client v2.0.0-alpha.5+incompatible // indirect
 	github.com/cespare/cp v1.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/eteu-technologies/borsh-go v0.3.2 // indirect
 	github.com/eteu-technologies/golang-uint128 v1.1.2-eteu // indirect
