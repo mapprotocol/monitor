@@ -5,11 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/mapprotocol/monitor/internal/chain"
 	"github.com/mapprotocol/monitor/internal/config"
 	"github.com/mapprotocol/monitor/internal/mapprotocol"
+	"github.com/mapprotocol/monitor/pkg/mempool"
 	"github.com/mapprotocol/monitor/pkg/util"
 	"io"
 	"math/big"
@@ -164,6 +168,10 @@ func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) 
 
 func (m *Monitor) mapCheck() {
 	for idx, contract := range m.Cfg.Tk.Contracts {
+		if m.Cfg.Tk.Token[idx] == "btc" {
+			m.nativeCheck(contract)
+			continue
+		}
 		contractAmount, err := mapprotocol.TotalSupply(contract)
 		if err != nil {
 			m.Log.Error("Check brc20 balance, get amount by contract", "token", m.Cfg.Tk.Token[idx], "err", err)
@@ -194,6 +202,30 @@ func (m *Monitor) mapCheck() {
 		}
 		time.Sleep(time.Second)
 	}
+}
+
+func (m *Monitor) nativeCheck(contract string) {
+	de := big.NewInt(10000000000)
+	first := strings.Split(m.Cfg.Tk.BridgeAddr, ",")[0]
+	btcSrcAfter, err := getBtcBalanceByMem(first)
+	if err != nil {
+		m.Log.Error("Native check  ", "addr", first, "err ", err)
+		return
+	}
+	m.Log.Info("Native check ", "total", btcSrcAfter)
+
+	ret := mapprotocol.MinterCapResp{}
+	err = mapprotocol.Call(contract, mapprotocol.MinterCapMethod, common.HexToAddress(m.Cfg.Tk.MapBridge), &ret)
+	if err != nil {
+		m.Log.Error("Native check, get amount by map contract", "err", err)
+		return
+	}
+	contractAmount := ret.Total.Div(ret.Total, de)
+	m.Log.Info("Check Native BTC balance, get amount", "bridgeBal", btcSrcAfter, "contractAmount", contractAmount)
+	if btcSrcAfter < (contractAmount.Int64()) {
+		util.Alarm(context.Background(), fmt.Sprintf("check brc20 balance token=btc, bridgeBal=%d, contractAmount=%v", btcSrcAfter, contractAmount))
+	}
+	time.Sleep(time.Second)
 }
 
 func (m *Monitor) OtherChainCheck() {
@@ -279,4 +311,17 @@ type gdTokenBalanceResponse struct {
 			AvailableBalance    string `json:"available_balance"`
 		} `json:"list"`
 	} `json:"data"`
+}
+
+func getBtcBalanceByMem(bridgeAddr string) (int64, error) {
+	netParams := &chaincfg.MainNetParams
+	client := mempool.NewClient(netParams)
+	address, _ := btcutil.DecodeAddress(bridgeAddr, netParams)
+	b, err := client.GetBalance(address)
+	if err != nil {
+		return 0, err
+	}
+	log.Info("get res by mem", "balance", b)
+
+	return b, nil
 }
