@@ -206,7 +206,7 @@ func (m *Monitor) mapCheck() {
 
 func (m *Monitor) nativeCheck(contract string) {
 	de := big.NewInt(10000000000)
-	first := strings.Split(m.Cfg.Tk.BridgeAddr, ",")[0]
+	first := strings.Split(m.Cfg.Tk.BtcBridgeAddr, ",")[0]
 	btcSrcAfter, err := getBtcBalanceByMem(first)
 	if err != nil {
 		m.Log.Error("Native check  ", "addr", first, "err ", err)
