@@ -35,10 +35,11 @@ type Config struct {
 }
 
 type Token struct {
-	BridgeAddr string   `json:"bridge_addr"`
-	MapBridge  string   `json:"map_bridge"`
-	Token      []string `json:"token"`
-	Contracts  []string `json:"contracts"`
+	BridgeAddr    string   `json:"bridge_addr"`
+	BtcBridgeAddr string   `json:"btc_bridge_addr"`
+	MapBridge     string   `json:"map_bridge"`
+	Token         []string `json:"token"`
+	Contracts     []string `json:"contracts"`
 }
 
 type ContractToken struct {
