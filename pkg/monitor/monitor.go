@@ -229,6 +229,9 @@ func (m *Monitor) nativeCheck(contract string) {
 }
 
 func (m *Monitor) OtherChainCheck() {
+	if m.Cfg.LightNode == config.ZeroAddress {
+		return
+	}
 	height, err := mapprotocol.Get2MapHeight(m.Cfg.Id)
 	m.Log.Info("Check Height", "syncHeight", height, "record", m.syncedHeight, "heightCount", m.heightCount)
 	if err != nil {
