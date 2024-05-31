@@ -48,10 +48,10 @@ type ContractToken struct {
 }
 
 type EthToken struct {
-	Name      string `json:"name"`
-	Addr      string `json:"addr"`
-	WaterLine int64  `json:"waterLine"`
-	Wei       int64  `json:"wei"`
+	Name      string  `json:"name"`
+	Addr      string  `json:"addr"`
+	WaterLine float64 `json:"waterLine"`
+	Wei       int64   `json:"wei"`
 }
 
 type Api struct {
