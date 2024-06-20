@@ -166,7 +166,7 @@ func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) 
 		}
 
 		retF, _ := ret.Float64()
-		overage, _ := big.NewFloat(0).Quo(big.NewFloat(retF)), util.ToWeiFloat(int64(1), int(wei))).Float64()
+		overage, _ := big.NewFloat(0).Quo(big.NewFloat(retF), util.ToWeiFloat(int64(1), int(wei))).Float64()
 		//overage, _ := ret.Div(ret, util.ToWei(int64(1), int(wei))).Float64()
 		m.Log.Info("Get Token result", "token", tk.Name, "overage", overage, "addr", tk.Addr)
 		if overage < tk.WaterLine {
