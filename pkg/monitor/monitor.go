@@ -5,6 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"math/big"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/ethereum/go-ethereum"
@@ -15,12 +22,6 @@ import (
 	"github.com/mapprotocol/monitor/internal/mapprotocol"
 	"github.com/mapprotocol/monitor/pkg/mempool"
 	"github.com/mapprotocol/monitor/pkg/util"
-	"io"
-	"math/big"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 )
 
 var dece = big.NewInt(1000000000000000000)
@@ -69,7 +70,18 @@ func (m *Monitor) sync() error {
 			return errors.New("polling terminated")
 		default:
 			for _, from := range m.Cfg.From {
-				m.checkBalance(common.HexToAddress(from))
+				m.checkBalance(common.HexToAddress(from), m.waterLine, true)
+			}
+
+			for _, user := range m.Cfg.Users {
+				wl, ok := new(big.Int).SetString(m.Cfg.WaterLine, 10)
+				if !ok {
+					m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
+					return nil
+				}
+				for _, from := range strings.Split(user.From, ",") {
+					m.checkBalance(common.HexToAddress(from), wl, false)
+				}
 			}
 
 			for _, ct := range m.Cfg.ContractToken {
@@ -87,7 +99,7 @@ func (m *Monitor) sync() error {
 	}
 }
 
-func (m *Monitor) checkBalance(addr common.Address) {
+func (m *Monitor) checkBalance(addr common.Address, waterLine *big.Int, report bool) {
 	balance, err := m.Conn.Client().BalanceAt(context.Background(), addr, nil)
 	if err != nil {
 		m.Log.Error("Unable to get user balance failed", "from", addr, "err", err)
@@ -95,27 +107,24 @@ func (m *Monitor) checkBalance(addr common.Address) {
 		return
 	}
 
-	m.Log.Info("Get balance result", "account", addr, "balance", balance)
-
 	if balance.Cmp(m.balance) != 0 {
 		m.balance = balance
 		m.timestamp = time.Now().Unix()
 	}
 
-	if balance.Cmp(m.waterLine) == -1 {
+	wl := float64(new(big.Int).Div(waterLine, config.Wei).Int64()) / float64(config.Wei.Int64())
+	bal := float64(balance.Div(balance, config.Wei).Int64()) / float64(config.Wei.Int64())
+	m.Log.Info("Get balance result", "account", addr, "balance", bal)
+	if balance.Cmp(waterLine) == -1 {
 		// alarm
 		util.Alarm(context.Background(),
-			fmt.Sprintf("Balance Less than %0.4f Balance,chains=%s addr=%s balance=%0.4f",
-				float64(new(big.Int).Div(m.waterLine, config.Wei).Int64())/float64(config.Wei.Int64()), m.Cfg.Name, addr,
-				float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64())))
+			fmt.Sprintf("Balance Less than %0.4f Balance,chains=%s addr=%s balance=%0.4f", wl, m.Cfg.Name, addr, bal))
 	}
 
 	now := time.Now().UTC()
-	if now.Weekday() == time.Monday && now.Hour() == 11 && now.Minute() == 10 {
+	if report && now.Weekday() == time.Monday && now.Hour() == 11 && now.Minute() == 10 {
 		util.Alarm(context.Background(),
-			fmt.Sprintf("Report Address Balance have,chains=%s addr=%s balance=%0.4f,waterLine=%0.4f", m.Cfg.Name, addr,
-				float64(balance.Div(balance, config.Wei).Int64())/float64(config.Wei.Int64()),
-				float64(new(big.Int).Div(m.waterLine, config.Wei).Int64())/float64(config.Wei.Int64())))
+			fmt.Sprintf("Report Address Balance have,chains=%s addr=%s balance=%0.4f,waterLine=%0.4f", m.Cfg.Name, addr, bal, wl))
 	}
 }
 
