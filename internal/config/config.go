@@ -3,14 +3,15 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/urfave/cli/v2"
 	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/urfave/cli/v2"
 )
 
 // RawChainConfig is parsed directly from the config file and should be using to construct the core.ChainConfig
@@ -23,6 +24,7 @@ type RawChainConfig struct {
 	Network       string            `json:"network"`
 	KeystorePath  string            `json:"keystorePath"`
 	Opts          map[string]string `json:"opts"`
+	Users         []From            `json:"users"`
 	ContractToken []ContractToken   `json:"contractToken"`
 }
 
@@ -57,6 +59,11 @@ type EthToken struct {
 type Api struct {
 	Key      string `json:"key"`
 	Endpoint string `json:"endpoint"`
+}
+
+type From struct {
+	From      string `json:"from"`
+	WaterLine string `json:"waterLine"`
 }
 
 func (c *Config) validate() error {
@@ -158,11 +165,12 @@ type OptConfig struct {
 	Tk             *Token
 	Genni          *Api
 	CheckHgtCount  int64
+	Users          []From
 	ContractToken  []ContractToken
 }
 
 // ParseOptConfig uses a core.ChainConfig to construct a corresponding Config
-func ParseOptConfig(chainCfg *ChainConfig, tks *Token, genni *Api) (*OptConfig, error) {
+func ParseOptConfig(chainCfg *ChainConfig, tks *Token, genni *Api, users []From) (*OptConfig, error) {
 	config := &OptConfig{
 		Id:             chainCfg.Id,
 		From:           strings.Split(chainCfg.From, ","),
@@ -181,6 +189,7 @@ func ParseOptConfig(chainCfg *ChainConfig, tks *Token, genni *Api) (*OptConfig, 
 		Genni:          genni,
 		CheckHgtCount:  DefaultCheckHgtCount,
 		ContractToken:  chainCfg.ContractToken,
+		Users:          users,
 	}
 
 	if chainCfg.NearKeystorePath != "" {

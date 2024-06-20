@@ -43,12 +43,11 @@ type Connection struct {
 }
 
 // NewConnection returns an uninitialized connection, must call Connection.Connect() before using.
-func NewConnection(endpoint string, http bool, kp *secp256k1.Keypair, log log15.Logger, gasLimit, gasPrice *big.Int,
+func NewConnection(endpoint string, http bool, log log15.Logger, gasLimit, gasPrice *big.Int,
 	gasMultiplier *big.Float, gsnApiKey, gsnSpeed string) *Connection {
 	return &Connection{
 		endpoint:      endpoint,
 		http:          http,
-		kp:            kp,
 		gasLimit:      gasLimit,
 		maxGasPrice:   gasPrice,
 		gasMultiplier: gasMultiplier,
@@ -75,14 +74,14 @@ func (c *Connection) Connect() error {
 	}
 	c.conn = ethclient.NewClient(rpcClient)
 
-	// Construct tx opts, call opts, and nonce mechanism
-	opts, _, err := c.newTransactOpts(big.NewInt(0), c.gasLimit, c.maxGasPrice)
-	if err != nil {
-		return err
-	}
-	c.opts = opts
-	c.nonce = 0
-	c.callOpts = &bind.CallOpts{From: c.kp.CommonAddress()}
+	// // Construct tx opts, call opts, and nonce mechanism
+	// opts, _, err := c.newTransactOpts(big.NewInt(0), c.gasLimit, c.maxGasPrice)
+	// if err != nil {
+	// 	return err
+	// }
+	// c.opts = opts
+	// c.nonce = 0
+	// c.callOpts = &bind.CallOpts{From: c.kp.CommonAddress()}
 	return nil
 }
 

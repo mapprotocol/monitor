@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strconv"
+
 	log "github.com/ChainSafe/log15"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mapprotocol/monitor/chains/eth"
@@ -10,7 +12,6 @@ import (
 	"github.com/mapprotocol/monitor/internal/core"
 	"github.com/mapprotocol/monitor/internal/mapprotocol"
 	"github.com/urfave/cli/v2"
-	"strconv"
 )
 
 var monitorCommand = cli.Command{
@@ -76,7 +77,7 @@ func run(ctx *cli.Context) error {
 				return err
 			}
 		} else {
-			newChain, err = eth.InitializeChain(chainConfig, logger, sysErr, &cfg.Tk, &cfg.Genni)
+			newChain, err = eth.InitializeChain(chainConfig, logger, sysErr, &cfg.Tk, &cfg.Genni, ac.Users)
 			if err != nil {
 				return err
 			}

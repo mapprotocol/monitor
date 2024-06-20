@@ -4,21 +4,19 @@
 package keystore
 
 import (
+	"bufio"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"os"
-	"syscall"
-
 	"github.com/ChainSafe/chainbridge-utils/crypto"
 	"github.com/ChainSafe/chainbridge-utils/crypto/secp256k1"
 	sr25519 "github.com/ChainSafe/chainbridge-utils/crypto/sr25519"
 	"golang.org/x/crypto/blake2b"
-	terminal "golang.org/x/term"
+	"io"
+	"os"
 )
 
 type EncryptedKeystore struct {
@@ -104,17 +102,13 @@ func EncryptAndWriteToFile(file *os.File, kp crypto.Keypair, password []byte) er
 	return err
 }
 
-// prompt user to enter password for encrypted keystore
 func GetPassword(msg string) []byte {
 	for {
 		fmt.Println(msg)
 		fmt.Print("> ")
-		password, err := terminal.ReadPassword(int(syscall.Stdin))
-		if err != nil {
-			fmt.Printf("invalid input: %s\n", err)
-		} else {
-			fmt.Printf("\n")
-			return password
+		stdin := bufio.NewScanner(os.Stdin)
+		for stdin.Scan() {
+			return stdin.Bytes()
 		}
 	}
 }

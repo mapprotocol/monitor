@@ -1,15 +1,12 @@
 package eth
 
 import (
-	"github.com/ChainSafe/chainbridge-utils/crypto/secp256k1"
 	"github.com/ChainSafe/log15"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/mapprotocol/monitor/internal/chain"
 	"github.com/mapprotocol/monitor/internal/config"
-	"github.com/mapprotocol/monitor/pkg/blockstore"
 	"github.com/mapprotocol/monitor/pkg/ethclient"
 	"github.com/mapprotocol/monitor/pkg/ethereum"
-	"github.com/mapprotocol/monitor/pkg/keystore"
 	"github.com/mapprotocol/monitor/pkg/monitor"
 )
 
@@ -20,32 +17,33 @@ type Chain struct {
 	listen chain.Listener // The listener of this chain
 }
 
-func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr chan<- error, tks *config.Token, genni *config.Api) (*Chain, error) {
-	cfg, err := config.ParseOptConfig(chainCfg, tks, genni)
+func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr chan<- error, tks *config.Token,
+	genni *config.Api, users []config.From) (*Chain, error) {
+	cfg, err := config.ParseOptConfig(chainCfg, tks, genni, users)
 	if err != nil {
 		return nil, err
 	}
 
-	kpI, err := keystore.KeypairFromAddress(cfg.From[0], keystore.EthChain, cfg.KeystorePath, chainCfg.Insecure)
-	if err != nil {
-		return nil, err
-	}
-	kp, _ := kpI.(*secp256k1.Keypair)
+	// kpI, err := keystore.KeypairFromAddress(cfg.From[0], keystore.EthChain, cfg.KeystorePath, chainCfg.Insecure)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// kp, _ := kpI.(*secp256k1.Keypair)
 
-	bs, err := blockstore.NewBlockstore("", cfg.Id, kp.Address())
-	if err != nil {
-		return nil, err
-	}
+	// bs, err := blockstore.NewBlockstore("", cfg.Id, kp.Address())
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	latestBlock, err := bs.TryLoadLatestBlock()
-	if err == nil {
-		if latestBlock.Cmp(cfg.StartBlock) == 1 {
-			cfg.StartBlock = latestBlock
-		}
-	}
+	// latestBlock, err := bs.TryLoadLatestBlock()
+	// if err == nil {
+	// 	if latestBlock.Cmp(cfg.StartBlock) == 1 {
+	// 		cfg.StartBlock = latestBlock
+	// 	}
+	// }
 
 	stop := make(chan int)
-	conn := ethereum.NewConnection(cfg.Endpoint, true, kp, logger, cfg.GasLimit, cfg.MaxGasPrice,
+	conn := ethereum.NewConnection(cfg.Endpoint, true, logger, cfg.GasLimit, cfg.MaxGasPrice,
 		cfg.GasMultiplier, cfg.EgsApiKey, cfg.EgsSpeed)
 	err = conn.Connect()
 	if err != nil {
@@ -54,7 +52,7 @@ func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr c
 
 	// simplified a little bit
 	var listen chain.Listener
-	cs := chain.NewCommonSync(conn, cfg, logger, stop, sysErr, bs)
+	cs := chain.NewCommonSync(conn, cfg, logger, stop, sysErr)
 	listen = monitor.New(cs)
 
 	return &Chain{

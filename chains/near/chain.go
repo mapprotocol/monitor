@@ -17,7 +17,7 @@ type Chain struct {
 }
 
 func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr chan<- error) (*Chain, error) {
-	cfg, err := config.ParseOptConfig(chainCfg, nil, nil)
+	cfg, err := config.ParseOptConfig(chainCfg, nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}
