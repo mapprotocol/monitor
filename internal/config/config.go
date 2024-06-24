@@ -77,9 +77,6 @@ func (c *Config) validate() error {
 		if chain.Name == "" {
 			return fmt.Errorf("required field chains.Name empty for chains %s", chain.Id)
 		}
-		if chain.From == "" {
-			return fmt.Errorf("required field chains.From empty for chains %s", chain.Id)
-		}
 	}
 	// check map chains
 	if c.MapChain.Id == "" {
@@ -87,9 +84,6 @@ func (c *Config) validate() error {
 	}
 	if c.MapChain.Endpoint == "" {
 		return fmt.Errorf("required field mapchain.Endpoint empty for chains %s", c.MapChain.Id)
-	}
-	if c.MapChain.From == "" {
-		return fmt.Errorf("required field chains.From empty for chains %s", c.MapChain.Id)
 	}
 
 	return nil

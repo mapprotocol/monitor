@@ -31,6 +31,7 @@ type Monitor struct {
 	heightCount                      int64
 	balance, syncedHeight, waterLine *big.Int
 	timestamp                        int64
+	balMapping                       map[string]float64
 }
 
 func New(cs *chain.Common) *Monitor {
@@ -38,6 +39,7 @@ func New(cs *chain.Common) *Monitor {
 		Common:       cs,
 		balance:      new(big.Int),
 		syncedHeight: new(big.Int),
+		balMapping:   make(map[string]float64),
 	}
 }
 
@@ -53,10 +55,6 @@ func (m *Monitor) Sync() error {
 	return nil
 }
 
-// sync function of Monitor will poll for the latest block and listen the log information of transactions in the block
-// Polling begins at the block defined in `m.Cfg.startBlock`. Failed attempts to fetch the latest block or parse
-// a block will be retried up to BlockRetryLimit times before continuing to the next block.
-// However，an error in synchronizing the log will cause the entire program to block
 func (m *Monitor) sync() error {
 	waterLine, ok := new(big.Int).SetString(m.Cfg.WaterLine, 10)
 	if !ok {
@@ -64,17 +62,28 @@ func (m *Monitor) sync() error {
 		return nil
 	}
 	m.waterLine = waterLine
+	// assamble users
+	for _, from := range m.Cfg.From {
+		m.balMapping[from] = 0
+	}
+	for _, user := range m.Cfg.Users {
+		for _, from := range strings.Split(user.From, ",") {
+			m.balMapping[from] = 0
+		}
+	}
+
 	for {
 		select {
 		case <-m.Stop:
 			return errors.New("polling terminated")
 		default:
+			m.reportUser()
 			for _, from := range m.Cfg.From {
 				m.checkBalance(common.HexToAddress(from), m.waterLine, true)
 			}
 
 			for _, user := range m.Cfg.Users {
-				wl, ok := new(big.Int).SetString(m.Cfg.WaterLine, 10)
+				wl, ok := new(big.Int).SetString(user.WaterLine, 10)
 				if !ok {
 					m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
 					return nil
@@ -99,6 +108,31 @@ func (m *Monitor) sync() error {
 	}
 }
 
+func (m *Monitor) reportUser() {
+	if m.timestamp != 0 && time.Now().Unix()-m.timestamp > 86400 {
+		return
+	}
+	now := make(map[string]float64)
+	for addr, yesHave := range m.balMapping {
+		balance, err := m.Conn.Client().BalanceAt(context.Background(), common.HexToAddress(addr), nil)
+		if err != nil {
+			m.Log.Error("Unable to get user balance failed", "from", addr, "err", err)
+			time.Sleep(config.RetryLongInterval)
+			return
+		}
+
+		bal := float64(new(big.Int).Div(balance, config.Wei).Int64()) / float64(config.Wei.Int64())
+		now[addr] = bal
+		if time.Now().Unix()-m.timestamp > 86400 {
+			util.Alarm(context.Background(),
+				fmt.Sprintf("Report balance detail,chains=%s addr=%s yesterday=%0.4f, now=%0.4f", m.Cfg.Name, addr, yesHave, bal))
+		}
+	}
+	m.timestamp = time.Now().Unix()
+	m.balMapping = make(map[string]float64)
+	m.balMapping = now
+}
+
 func (m *Monitor) checkBalance(addr common.Address, waterLine *big.Int, report bool) {
 	balance, err := m.Conn.Client().BalanceAt(context.Background(), addr, nil)
 	if err != nil {
@@ -109,12 +143,11 @@ func (m *Monitor) checkBalance(addr common.Address, waterLine *big.Int, report b
 
 	if balance.Cmp(m.balance) != 0 {
 		m.balance = balance
-		m.timestamp = time.Now().Unix()
 	}
 
 	wl := float64(new(big.Int).Div(waterLine, config.Wei).Int64()) / float64(config.Wei.Int64())
-	bal := float64(balance.Div(balance, config.Wei).Int64()) / float64(config.Wei.Int64())
-	m.Log.Info("Get balance result", "account", addr, "balance", bal)
+	bal := float64(new(big.Int).Div(balance, config.Wei).Int64()) / float64(config.Wei.Int64())
+	m.Log.Info("Get balance result", "account", addr, "balance", bal, "wl", wl)
 	if balance.Cmp(waterLine) == -1 {
 		// alarm
 		util.Alarm(context.Background(),
