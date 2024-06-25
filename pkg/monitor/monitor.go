@@ -109,7 +109,7 @@ func (m *Monitor) sync() error {
 }
 
 func (m *Monitor) reportUser() {
-	if m.timestamp != 0 && time.Now().Unix()-m.timestamp > 86400 {
+	if m.timestamp != 0 && time.Now().Unix()-m.timestamp < 86400 {
 		return
 	}
 	now := make(map[string]float64)
