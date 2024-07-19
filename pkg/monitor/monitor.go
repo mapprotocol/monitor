@@ -112,8 +112,15 @@ func (m *Monitor) reportUser() {
 	if m.timestamp != 0 && time.Now().Unix()-m.timestamp < 86400 {
 		return
 	}
-	now := make(map[string]float64)
+	var (
+		now                = make(map[string]float64)
+		yesTotal, nowTotal = float64(0), float64(0)
+	)
+
 	for addr, yesHave := range m.balMapping {
+		if addr == "" || addr == config.ZeroAddress.String() {
+			continue
+		}
 		balance, err := m.Conn.Client().BalanceAt(context.Background(), common.HexToAddress(addr), nil)
 		if err != nil {
 			m.Log.Error("Unable to get user balance failed", "from", addr, "err", err)
@@ -123,11 +130,16 @@ func (m *Monitor) reportUser() {
 
 		bal := float64(new(big.Int).Div(balance, config.Wei).Int64()) / float64(config.Wei.Int64())
 		now[addr] = bal
-		if time.Now().Unix()-m.timestamp > 86400 {
-			util.Alarm(context.Background(),
-				fmt.Sprintf("Report balance detail,chains=%s addr=%s yesterday=%0.4f, now=%0.4f", m.Cfg.Name, addr, yesHave, bal))
-		}
+		nowTotal += bal
+		yesTotal += yesHave
 	}
+	fmt.Println(m.Cfg.Name, " yesTotal ---------- ", yesTotal, " nowTotal ------------------- ", nowTotal)
+	if time.Now().Unix()-m.timestamp > 86400 {
+		util.Alarm(context.Background(),
+			fmt.Sprintf("Report balance detail,chains=%s,yesterday=%0.4f,now=%0.4f",
+				m.Cfg.Name, yesTotal, nowTotal))
+	}
+
 	m.timestamp = time.Now().Unix()
 	m.balMapping = make(map[string]float64)
 	m.balMapping = now
