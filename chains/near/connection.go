@@ -18,19 +18,15 @@ type Connection struct {
 	gasLimit      *big.Int
 	maxGasPrice   *big.Int
 	gasMultiplier *big.Float
-	egsApiKey     string
-	egsSpeed      string
 	conn          *nearclient.Client
-	//opts          *bind.TransactOpts
-	//callOpts      *bind.CallOpts
-	nonce    uint64
-	optsLock sync.Mutex
-	log      log15.Logger
-	stop     chan int // All routines should exit when this channel is closed
+	nonce         uint64
+	optsLock      sync.Mutex
+	log           log15.Logger
+	stop          chan int // All routines should exit when this channel is closed
 }
 
 func newConnection(endpoint string, http bool, kp *key.KeyPair, log log15.Logger, gasLimit, gasPrice *big.Int,
-	gasMultiplier *big.Float, gsnApiKey, gsnSpeed string) *Connection {
+	gasMultiplier *big.Float) *Connection {
 	return &Connection{
 		endpoint:      endpoint,
 		http:          http,
@@ -38,8 +34,6 @@ func newConnection(endpoint string, http bool, kp *key.KeyPair, log log15.Logger
 		gasLimit:      gasLimit,
 		maxGasPrice:   gasPrice,
 		gasMultiplier: gasMultiplier,
-		egsApiKey:     gsnApiKey,
-		egsSpeed:      gsnSpeed,
 		log:           log,
 		stop:          make(chan int),
 	}
