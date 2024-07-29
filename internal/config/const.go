@@ -14,6 +14,7 @@ const (
 
 const (
 	Near = "near"
+	Tron = "tron"
 )
 
 const (
@@ -39,6 +40,7 @@ var (
 	WaterLine        = "waterLine"
 	ChangeInterval   = "changeInterval"
 	CheckHeightCount = "checkHeightCount"
+	ApiUrl           = "apiUrl"
 )
 
 const (

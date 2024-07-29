@@ -1,23 +1,21 @@
-package eth
+package tron
 
 import (
 	"github.com/ChainSafe/log15"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/mapprotocol/monitor/internal/chain"
 	"github.com/mapprotocol/monitor/internal/config"
-	"github.com/mapprotocol/monitor/pkg/ethclient"
 	"github.com/mapprotocol/monitor/pkg/ethereum"
-	"github.com/mapprotocol/monitor/pkg/monitor"
 )
 
 type Chain struct {
 	cfg    *config.ChainConfig // The config of the chain
 	conn   chain.Connection    // The chains connection
 	stop   chan<- int
-	listen chain.Listener // The listener of this chain
+	listen chain.Listener
 }
 
-func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr chan<- error, tks *config.Token,
+func New(chainCfg *config.ChainConfig, logger log15.Logger, sysErr chan<- error, tks *config.Token,
 	genni *config.Api, users []config.From) (*Chain, error) {
 	cfg, err := config.ParseOptConfig(chainCfg, tks, genni, users)
 	if err != nil {
@@ -25,9 +23,14 @@ func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr c
 	}
 
 	stop := make(chan int)
-	conn := ethereum.NewConnection(cfg.Endpoint, true, logger, cfg.GasLimit, cfg.MaxGasPrice,
-		cfg.GasMultiplier)
+	conn := ethereum.NewConnection(cfg.ApiUrl, true, logger, cfg.GasLimit, cfg.MaxGasPrice, cfg.GasMultiplier)
 	err = conn.Connect()
+	if err != nil {
+		return nil, err
+	}
+
+	tronConn := NewConn(cfg.Endpoint, logger)
+	err = tronConn.Connect()
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +38,7 @@ func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr c
 	// simplified a little bit
 	var listen chain.Listener
 	cs := chain.NewCommonSync(conn, cfg, logger, stop, sysErr)
-	listen = monitor.New(cs)
+	listen = NewMonitor(cs, tronConn)
 
 	return &Chain{
 		cfg:    chainCfg,
@@ -43,6 +46,11 @@ func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr c
 		stop:   stop,
 		listen: listen,
 	}, nil
+}
+
+func (c *Chain) Name() string {
+	return c.cfg.Name
+
 }
 
 func (c *Chain) Start() error {
@@ -55,28 +63,11 @@ func (c *Chain) Start() error {
 	return nil
 }
 
+func (c *Chain) Stop() {
+
+}
+
 func (c *Chain) Id() config.ChainId {
 	return c.cfg.Id
-}
 
-func (c *Chain) Name() string {
-	return c.cfg.Name
-}
-
-// Stop signals to any running routines to exit
-func (c *Chain) Stop() {
-	close(c.stop)
-	if c.conn != nil {
-		c.conn.Close()
-	}
-}
-
-// Conn return Connection interface for relayer register
-func (c *Chain) Conn() chain.Connection {
-	return c.conn
-}
-
-// EthClient return EthClient for global map connection
-func (c *Chain) EthClient() *ethclient.Client {
-	return c.conn.Client()
 }

@@ -1,12 +1,13 @@
 package main
 
 import (
+	"github.com/mapprotocol/monitor/chains/near"
+	"github.com/mapprotocol/monitor/chains/tron"
 	"strconv"
 
 	log "github.com/ChainSafe/log15"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mapprotocol/monitor/chains/eth"
-	"github.com/mapprotocol/monitor/chains/near"
 	"github.com/mapprotocol/monitor/internal/chain"
 	"github.com/mapprotocol/monitor/internal/config"
 	"github.com/mapprotocol/monitor/internal/core"
@@ -71,16 +72,16 @@ func run(ctx *cli.Context) error {
 		)
 
 		logger := log.Root().New("chains", chainConfig.Name)
-		if ac.Type == config.Near {
+		switch ac.Type {
+		case config.Near:
 			newChain, err = near.InitializeChain(chainConfig, logger, sysErr)
-			if err != nil {
-				return err
-			}
-		} else {
+		case config.Tron:
+			newChain, err = tron.New(chainConfig, logger, sysErr, &cfg.Tk, &cfg.Genni, ac.Users)
+		default:
 			newChain, err = eth.InitializeChain(chainConfig, logger, sysErr, &cfg.Tk, &cfg.Genni, ac.Users)
-			if err != nil {
-				return err
-			}
+		}
+		if err != nil {
+			return err
 		}
 		if idx == 0 {
 			mapprotocol.GlobalMapConn = newChain.(*eth.Chain).EthClient()

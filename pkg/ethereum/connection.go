@@ -18,7 +18,6 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/mapprotocol/monitor/pkg/ethclient"
-	"github.com/mapprotocol/monitor/pkg/ethereum/egs"
 )
 
 var BlockRetryInterval = time.Second * 5
@@ -30,29 +29,24 @@ type Connection struct {
 	gasLimit      *big.Int
 	maxGasPrice   *big.Int
 	gasMultiplier *big.Float
-	egsApiKey     string
-	egsSpeed      string
 	conn          *ethclient.Client
-	// signer    ethtypes.Signer
-	opts     *bind.TransactOpts
-	callOpts *bind.CallOpts
-	nonce    uint64
-	optsLock sync.Mutex
-	log      log15.Logger
-	stop     chan int // All routines should exit when this channel is closed
+	opts          *bind.TransactOpts
+	callOpts      *bind.CallOpts
+	nonce         uint64
+	optsLock      sync.Mutex
+	log           log15.Logger
+	stop          chan int // All routines should exit when this channel is closed
 }
 
 // NewConnection returns an uninitialized connection, must call Connection.Connect() before using.
 func NewConnection(endpoint string, http bool, log log15.Logger, gasLimit, gasPrice *big.Int,
-	gasMultiplier *big.Float, gsnApiKey, gsnSpeed string) *Connection {
+	gasMultiplier *big.Float) *Connection {
 	return &Connection{
 		endpoint:      endpoint,
 		http:          http,
 		gasLimit:      gasLimit,
 		maxGasPrice:   gasPrice,
 		gasMultiplier: gasMultiplier,
-		egsApiKey:     gsnApiKey,
-		egsSpeed:      gsnSpeed,
 		log:           log,
 		stop:          make(chan int),
 	}
@@ -133,17 +127,6 @@ func (c *Connection) CallOpts() *bind.CallOpts {
 func (c *Connection) SafeEstimateGas(ctx context.Context) (*big.Int, error) {
 
 	var suggestedGasPrice *big.Int
-
-	// First attempt to use EGS for the gas price if the api key is supplied
-	if c.egsApiKey != "" {
-		price, err := egs.FetchGasPrice(c.egsApiKey, c.egsSpeed)
-		if err != nil {
-			c.log.Error("Couldn't fetch gasPrice from GSN", "err", err)
-		} else {
-			suggestedGasPrice = price
-		}
-	}
-
 	// Fallback to the node rpc method for the gas price if GSN did not provide a price
 	if suggestedGasPrice == nil {
 		c.log.Debug("Fetching gasPrice from node")

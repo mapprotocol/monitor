@@ -33,7 +33,7 @@ func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr c
 	}
 
 	stop := make(chan int)
-	conn := newConnection(cfg.Endpoint, true, &kp, logger, cfg.GasLimit, cfg.MaxGasPrice, cfg.GasMultiplier, cfg.EgsApiKey, cfg.EgsSpeed)
+	conn := newConnection(cfg.Endpoint, true, &kp, logger, cfg.GasLimit, cfg.MaxGasPrice, cfg.GasMultiplier)
 	err = conn.Connect()
 	if err != nil {
 		return nil, err

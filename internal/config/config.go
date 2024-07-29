@@ -151,11 +151,10 @@ type OptConfig struct {
 	GasMultiplier  *big.Float
 	WaterLine      string
 	ChangeInterval string
+	ApiUrl         string
 	StartBlock     *big.Int
 	MapChainID     ChainId
 	LightNode      common.Address // the lightnode to sync header
-	EgsApiKey      string         // API key for ethgasstation to query gas prices
-	EgsSpeed       string         // The speed which a transaction should be processed: average, fast, fastest. Default: fast
 	Tk             *Token
 	Genni          *Api
 	CheckHgtCount  int64
@@ -173,8 +172,6 @@ func ParseOptConfig(chainCfg *ChainConfig, tks *Token, genni *Api, users []From)
 		KeystorePath:   DefaultKeystorePath,
 		WaterLine:      "",
 		ChangeInterval: "",
-		EgsApiKey:      "",
-		EgsSpeed:       "",
 		StartBlock:     big.NewInt(0),
 		GasLimit:       big.NewInt(DefaultGasLimit),
 		MaxGasPrice:    big.NewInt(DefaultGasPrice),
@@ -209,6 +206,10 @@ func ParseOptConfig(chainCfg *ChainConfig, tks *Token, genni *Api, users []From)
 
 	if alarmSecond, ok := chainCfg.Opts[ChangeInterval]; ok && alarmSecond != "" {
 		config.ChangeInterval = alarmSecond
+	}
+
+	if apiUrl, ok := chainCfg.Opts[ApiUrl]; ok && apiUrl != "" {
+		config.ApiUrl = apiUrl
 	}
 
 	if checkHeightCount, ok := chainCfg.Opts[CheckHeightCount]; ok && checkHeightCount != "" {
