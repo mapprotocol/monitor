@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
 	"io"
 	"math/big"
 	"net/http"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/mapprotocol/monitor/internal/chain"
@@ -159,7 +159,7 @@ func (m *Monitor) checkBalance(addr common.Address, waterLine *big.Int, report b
 
 	wl := float64(new(big.Int).Div(waterLine, config.Wei).Int64()) / float64(config.Wei.Int64())
 	bal := float64(new(big.Int).Div(balance, config.Wei).Int64()) / float64(config.Wei.Int64())
-	m.Log.Info("Get balance result", "account", addr, "balance", bal, "wl", wl)
+	m.Log.Info("Get balance result", "account", addr, "balance", bal, "wl", wl, "balance", balance)
 	if balance.Cmp(waterLine) == -1 {
 		// alarm
 		util.Alarm(context.Background(),
