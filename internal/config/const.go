@@ -15,6 +15,7 @@ const (
 const (
 	Near = "near"
 	Tron = "tron"
+	Sol  = "sol"
 )
 
 const (

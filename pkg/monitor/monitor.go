@@ -58,6 +58,7 @@ func (m *Monitor) Sync() error {
 func (m *Monitor) sync() error {
 	waterLine, ok := new(big.Int).SetString(m.Cfg.WaterLine, 10)
 	if !ok {
+		fmt.Println("--------------- 111")
 		m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
 		return nil
 	}
@@ -79,12 +80,13 @@ func (m *Monitor) sync() error {
 		default:
 			m.reportUser()
 			for _, from := range m.Cfg.From {
-				m.checkBalance(common.HexToAddress(from), m.waterLine, true)
+				m.checkBalance(common.HexToAddress(from), m.waterLine, false)
 			}
 
 			for _, user := range m.Cfg.Users {
 				wl, ok := new(big.Int).SetString(user.WaterLine, 10)
 				if !ok {
+					fmt.Println("---------------")
 					m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
 					return nil
 				}
