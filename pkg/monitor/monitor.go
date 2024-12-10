@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
 	"io"
 	"math/big"
 	"net/http"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/mapprotocol/monitor/internal/chain"
@@ -58,6 +58,7 @@ func (m *Monitor) Sync() error {
 func (m *Monitor) sync() error {
 	waterLine, ok := new(big.Int).SetString(m.Cfg.WaterLine, 10)
 	if !ok {
+		fmt.Println("--------------- 111")
 		m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
 		return nil
 	}
@@ -79,12 +80,13 @@ func (m *Monitor) sync() error {
 		default:
 			m.reportUser()
 			for _, from := range m.Cfg.From {
-				m.checkBalance(common.HexToAddress(from), m.waterLine, true)
+				m.checkBalance(common.HexToAddress(from), m.waterLine, false)
 			}
 
 			for _, user := range m.Cfg.Users {
 				wl, ok := new(big.Int).SetString(user.WaterLine, 10)
 				if !ok {
+					fmt.Println("---------------")
 					m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
 					return nil
 				}
@@ -159,7 +161,7 @@ func (m *Monitor) checkBalance(addr common.Address, waterLine *big.Int, report b
 
 	wl := float64(new(big.Int).Div(waterLine, config.Wei).Int64()) / float64(config.Wei.Int64())
 	bal := float64(new(big.Int).Div(balance, config.Wei).Int64()) / float64(config.Wei.Int64())
-	m.Log.Info("Get balance result", "account", addr, "balance", bal, "wl", wl)
+	m.Log.Info("Get balance result", "account", addr, "balance", bal, "wl", wl, "balance", balance)
 	if balance.Cmp(waterLine) == -1 {
 		// alarm
 		util.Alarm(context.Background(),
