@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/mapprotocol/monitor/chains/near"
 	"github.com/mapprotocol/monitor/chains/sol"
 	"github.com/mapprotocol/monitor/chains/tron"
@@ -74,7 +73,6 @@ func run(ctx *cli.Context) error {
 		)
 
 		logger := log.Root().New("chains", chainConfig.Name)
-		fmt.Println("c.Type ------ ", ac.Type)
 		switch ac.Type {
 		case config.Near:
 			newChain, err = near.InitializeChain(chainConfig, logger, sysErr)

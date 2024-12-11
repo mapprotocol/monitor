@@ -3,7 +3,6 @@ package sol
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/mapprotocol/monitor/internal/chain"
@@ -62,9 +61,9 @@ func (m *Monitor) sync() error {
 				m.checkBalance(from)
 			}
 
-			//for _, ct := range m.Cfg.ContractToken {
-			//	m.checkToken(common.HexToAddress(ct.Address), ct.Tokens)
-			//}
+			for _, ct := range m.Cfg.ContractToken {
+				m.checkToken(ct.Address, ct.Tokens)
+			}
 
 			time.Sleep(config.BalanceRetryInterval)
 		}
@@ -99,6 +98,30 @@ func (m *Monitor) checkBalance(addr string) {
 	}
 }
 
-func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) {
+func (m *Monitor) checkToken(contract string, tokens []config.EthToken) {
+	for _, tk := range tokens {
+		out, err := m.conn.GetTokenAccountBalance(context.TODO(),
+			solana.MustPublicKeyFromBase58(tk.Addr), rpc.CommitmentFinalized)
+		if err != nil {
+			m.Log.Error("Get token balance failed", "account", tk.Addr, "err", err)
+			continue
+		}
+		if out == nil || out.Value == nil {
+			m.Log.Error("Get token balance, value is nil", "account", tk.Addr)
+			continue
+		}
 
+		m.Log.Info("Get Token result", "token", tk.Name, "addr", tk.Addr, "overage", out.Value.UiAmountString)
+		overage, ok := big.NewFloat(0).SetString(out.Value.UiAmountString)
+		if !ok {
+			m.Log.Error("Get token balance, overage is invalid", "account", tk.Addr, "overage", out.Value.UiAmountString)
+			continue
+		}
+		overFl, _ := overage.Float64()
+		if overFl < tk.WaterLine {
+			// alarm
+			util.Alarm(context.Background(),
+				fmt.Sprintf("Token Less than waterLine ,chains=%s token=%s overage=%0.4f", m.Cfg.Name, tk.Name, overage))
+		}
+	}
 }
