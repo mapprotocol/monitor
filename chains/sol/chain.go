@@ -31,7 +31,6 @@ func New(chainCfg *config.ChainConfig, logger log15.Logger, sysErr chan<- error,
 		return nil, err
 	}
 
-	// simplified a little bit
 	var listen chain.Listener
 	cs := chain.NewCommonSync(nil, cfg, logger, stop, sysErr)
 	listen = NewMonitor(cs, client)
