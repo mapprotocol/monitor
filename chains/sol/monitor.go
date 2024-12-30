@@ -9,7 +9,6 @@ import (
 	"github.com/mapprotocol/monitor/internal/config"
 	"github.com/mapprotocol/monitor/pkg/util"
 	"github.com/pkg/errors"
-	"log"
 	"math/big"
 	"strconv"
 	"time"
@@ -71,10 +70,10 @@ func (m *Monitor) sync() error {
 }
 
 func (m *Monitor) checkBalance(addr string) {
-	// 2NbBprEPRu5ATXkNNqJZ9EHcD5ZGjxgPLJDPTAzmX7Jf
 	balance, err := m.conn.GetBalance(context.TODO(), solana.MustPublicKeyFromBase58(addr), rpc.CommitmentFinalized)
 	if err != nil {
-		log.Fatal(err)
+		m.Log.Error("m.conn.GetBalance failed", "err", err)
+		return
 	}
 
 	waterLine, err := strconv.ParseFloat(m.Cfg.WaterLine, 64)

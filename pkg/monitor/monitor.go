@@ -136,11 +136,11 @@ func (m *Monitor) reportUser() {
 		yesTotal += yesHave
 	}
 	fmt.Println(m.Cfg.Name, " yesTotal ---------- ", yesTotal, " nowTotal ------------------- ", nowTotal)
-	if time.Now().Unix()-m.timestamp > 86400 {
-		util.Alarm(context.Background(),
-			fmt.Sprintf("Report balance detail,chains=%s,yesterday=%0.4f,now=%0.4f",
-				m.Cfg.Name, yesTotal, nowTotal))
-	}
+	//if time.Now().Unix()-m.timestamp > 86400 {
+	//	util.Alarm(context.Background(),
+	//		fmt.Sprintf("Report balance detail,chains=%s,yesterday=%0.4f,now=%0.4f",
+	//			m.Cfg.Name, yesTotal, nowTotal))
+	//}
 
 	m.timestamp = time.Now().Unix()
 	m.balMapping = make(map[string]float64)
