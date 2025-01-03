@@ -135,7 +135,7 @@ func (m *Monitor) reportUser() {
 		nowTotal += bal
 		yesTotal += yesHave
 	}
-	fmt.Println(m.Cfg.Name, " yesTotal ---------- ", yesTotal, " nowTotal ------------------- ", nowTotal)
+
 	//if time.Now().Unix()-m.timestamp > 86400 {
 	//	util.Alarm(context.Background(),
 	//		fmt.Sprintf("Report balance detail,chains=%s,yesterday=%0.4f,now=%0.4f",

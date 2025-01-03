@@ -26,6 +26,7 @@ type RawChainConfig struct {
 	Opts          map[string]string `json:"opts"`
 	Users         []From            `json:"users"`
 	ContractToken []ContractToken   `json:"contractToken"`
+	Energies      []Energy          `json:"energy"`
 }
 
 type Config struct {
@@ -47,6 +48,11 @@ type Token struct {
 type ContractToken struct {
 	Address string     `json:"address"`
 	Tokens  []EthToken `json:"tokens"`
+}
+
+type Energy struct {
+	Address   string `json:"address"`
+	Waterline int64  `json:"waterline"`
 }
 
 type EthToken struct {
@@ -160,6 +166,7 @@ type OptConfig struct {
 	CheckHgtCount  int64
 	Users          []From
 	ContractToken  []ContractToken
+	Energies       []Energy
 }
 
 // ParseOptConfig uses a core.ChainConfig to construct a corresponding Config
@@ -180,6 +187,7 @@ func ParseOptConfig(chainCfg *ChainConfig, tks *Token, genni *Api, users []From)
 		Genni:          genni,
 		CheckHgtCount:  DefaultCheckHgtCount,
 		ContractToken:  chainCfg.ContractToken,
+		Energies:       chainCfg.Energies,
 		Users:          users,
 	}
 
