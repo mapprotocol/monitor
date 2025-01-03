@@ -67,6 +67,7 @@ func run(ctx *cli.Context) error {
 			NearKeystorePath: ac.KeystorePath,
 			Opts:             ac.Opts,
 			ContractToken:    ac.ContractToken,
+			Energies:         ac.Energies,
 		}
 		var (
 			newChain chain.Chain

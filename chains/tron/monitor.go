@@ -62,6 +62,7 @@ func (m *Monitor) sync() error {
 			return errors.New("polling terminated")
 		default:
 			m.checkBalance(true)
+			m.checkEnergy()
 			for _, ct := range m.Cfg.ContractToken {
 				m.checkToken(common.HexToAddress(ct.Address), ct.Tokens)
 			}
@@ -72,16 +73,8 @@ func (m *Monitor) sync() error {
 }
 
 func (m *Monitor) checkBalance(report bool) {
-	now := time.Now().UTC()
 	for _, form := range m.Cfg.From {
-		// // get account energy
-		//acc, err := m.conn.cli.GetAccountResource(form)
-		//if err != nil {
-		//	return
-		//}
-		//m.Log.Info("CheckBalance, account detail", "account", form, "all", acc.EnergyLimit)
 		// get account balance
-		fmt.Println("m.conn.cli ", m.conn.cli, "----------", m.conn)
 		account, err := m.conn.cli.GetAccount(form)
 		if err != nil {
 			m.Log.Error("CheckBalance GetAccount failed", "account", form, "err", err)
@@ -95,10 +88,22 @@ func (m *Monitor) checkBalance(report bool) {
 					m.waterLine.Int64(), m.Cfg.Name, form, balance))
 			continue
 		}
+	}
+}
 
-		if report && now.Weekday() == time.Monday && now.Hour() == 11 && now.Minute() == 10 {
-			util.Alarm(context.Background(), fmt.Sprintf("Report Address Balance have,chains=%s addr=%s balance=%0.4f,waterLine=%d",
-				m.Cfg.Name, form, balance, m.waterLine.Int64()))
+func (m *Monitor) checkEnergy() {
+	for _, ele := range m.Cfg.Energies {
+		resource, err := m.conn.cli.GetAccountResource(ele.Address)
+		if err != nil {
+			m.Log.Error("CheckEnergy GetAccountResource failed", "account", ele.Address, "err", err)
+			continue
+		}
+		m.Log.Info("CheckEnergy, account detail", "account", ele.Address, "energy", resource.EnergyLimit, "used", resource.EnergyUsed)
+		if (resource.EnergyLimit - resource.EnergyUsed) < ele.Waterline {
+			util.Alarm(context.Background(),
+				fmt.Sprintf("Energy Less than %d,chains=%s addr=%s energy=%d",
+					m.waterLine.Int64(), m.Cfg.Name, ele.Address, resource.EnergyLimit-resource.EnergyUsed))
+			continue
 		}
 	}
 }
