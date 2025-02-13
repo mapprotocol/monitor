@@ -101,8 +101,7 @@ func (m *Monitor) checkEnergy() {
 		m.Log.Info("CheckEnergy, account detail", "account", ele.Address, "energy", resource.EnergyLimit, "used", resource.EnergyUsed)
 		if (resource.EnergyLimit - resource.EnergyUsed) < ele.Waterline {
 			util.Alarm(context.Background(),
-				fmt.Sprintf("Energy Less than %d,chains=%s addr=%s energy=%d",
-					m.waterLine.Int64(), m.Cfg.Name, ele.Address, resource.EnergyLimit-resource.EnergyUsed))
+				fmt.Sprintf("Energy Less than %d,chains=%s addr=%s energy=%d", ele.Waterline, m.Cfg.Name, ele.Address, resource.EnergyLimit-resource.EnergyUsed))
 			continue
 		}
 	}
