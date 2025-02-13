@@ -214,12 +214,11 @@ func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) 
 
 		retF, _ := ret.Float64()
 		overage, _ := big.NewFloat(0).Quo(big.NewFloat(retF), util.ToWeiFloat(int64(1), int(wei))).Float64()
-		//overage, _ := ret.Div(ret, util.ToWei(int64(1), int(wei))).Float64()
 		m.Log.Info("Get Token result", "token", tk.Name, "overage", overage, "addr", tk.Addr)
 		if overage < tk.WaterLine {
 			// alarm
 			util.Alarm(context.Background(),
-				fmt.Sprintf("Token Less than waterLine ,chains=%s token=%s overage=%0.4f", m.Cfg.Name, tk.Name, overage))
+				fmt.Sprintf("Token Less than %0.4f,chains=%s token=%s addr=%s overage=%0.4f ", tk.WaterLine, m.Cfg.Name, tk.Name, tk.Addr, overage))
 		}
 	}
 }
