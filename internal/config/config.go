@@ -68,6 +68,7 @@ type Api struct {
 }
 
 type From struct {
+	Group     string `json:"group"`
 	From      string `json:"from"`
 	WaterLine string `json:"waterLine"`
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"math/big"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -50,14 +51,33 @@ func (m *Monitor) Sync() error {
 }
 
 func (m *Monitor) sync() error {
-	fmt.Println("======")
+	waterLine, err := strconv.ParseFloat(m.Cfg.WaterLine, 64)
+	if err != nil {
+		m.Log.Error("Error parsing water line", "m.Cfg.WaterLine", m.Cfg.WaterLine, "err", err)
+		m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
+		return err
+	}
 	for {
 		select {
 		case <-m.Stop:
 			return errors.New("polling terminated")
 		default:
-			for _, from := range m.Cfg.From {
-				m.checkBalance(from)
+			for _, ele := range m.Cfg.From {
+				if ele == "" {
+					continue
+				}
+				m.checkBalance(ele, "unknown", waterLine)
+			}
+
+			for _, ele := range m.Cfg.Users {
+				wl, ok := new(big.Int).SetString(ele.WaterLine, 10)
+				if !ok {
+					m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
+					return nil
+				}
+				for _, addr := range strings.Split(ele.From, ",") {
+					m.checkBalance(addr, ele.Group, float64(wl.Int64()))
+				}
 			}
 
 			for _, ct := range m.Cfg.ContractToken {
@@ -69,18 +89,13 @@ func (m *Monitor) sync() error {
 	}
 }
 
-func (m *Monitor) checkBalance(addr string) {
+func (m *Monitor) checkBalance(addr, group string, waterLine float64) {
 	balance, err := m.conn.GetBalance(context.TODO(), solana.MustPublicKeyFromBase58(addr), rpc.CommitmentFinalized)
 	if err != nil {
 		m.Log.Error("m.conn.GetBalance failed", "err", err)
 		return
 	}
 
-	waterLine, err := strconv.ParseFloat(m.Cfg.WaterLine, 64)
-	if err != nil {
-		m.Log.Error("Error parsing water line", "m.Cfg.WaterLine", m.Cfg.WaterLine, "err", err)
-		return
-	}
 	bal, _ := new(big.Float).Quo(big.NewFloat(0).SetUint64(balance.Value),
 		big.NewFloat(1000000000)).Float64()
 	//if !ok.String() {
@@ -92,8 +107,8 @@ func (m *Monitor) checkBalance(addr string) {
 	if bal < waterLine {
 		// alarm
 		util.Alarm(context.Background(),
-			fmt.Sprintf("Balance Less than %0.4f Balance,chains=%s addr=%s balance=%0.4f",
-				waterLine, m.Cfg.Name, addr, bal))
+			fmt.Sprintf("Balance Less than %0.4f Balance,chains=%s group=%s addr=%s balance=%0.4f",
+				waterLine, m.Cfg.Name, group, addr, bal))
 	}
 }
 
