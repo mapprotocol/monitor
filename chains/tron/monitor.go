@@ -11,6 +11,7 @@ import (
 	"github.com/mapprotocol/monitor/pkg/util"
 	"github.com/pkg/errors"
 	"math/big"
+	"strings"
 	"time"
 )
 
@@ -61,7 +62,24 @@ func (m *Monitor) sync() error {
 		case <-m.Stop:
 			return errors.New("polling terminated")
 		default:
-			m.checkBalance(true)
+			for _, ele := range m.Cfg.From {
+				if ele == "" {
+					continue
+				}
+				m.checkBalance(ele, "unknown", m.waterLine, true)
+			}
+
+			for _, ele := range m.Cfg.Users {
+				wl, ok := new(big.Int).SetString(ele.WaterLine, 10)
+				if !ok {
+					m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
+					return nil
+				}
+				for _, addr := range strings.Split(ele.From, ",") {
+					m.checkBalance(addr, ele.Group, wl, false)
+				}
+			}
+
 			m.checkEnergy()
 			for _, ct := range m.Cfg.ContractToken {
 				m.checkToken(common.HexToAddress(ct.Address), ct.Tokens)
@@ -72,23 +90,22 @@ func (m *Monitor) sync() error {
 	}
 }
 
-func (m *Monitor) checkBalance(report bool) {
-	for _, form := range m.Cfg.From {
-		// get account balance
-		account, err := m.conn.cli.GetAccount(form)
-		if err != nil {
-			m.Log.Error("CheckBalance GetAccount failed", "account", form, "err", err)
-			continue
-		}
-		balance, _ := big.NewFloat(0).Quo(big.NewFloat(0).SetInt64(account.Balance), wei).Float64()
-		m.Log.Info("CheckBalance, account detail", "account", form, "balance", balance)
-		if balance < float64(m.waterLine.Int64()) {
-			util.Alarm(context.Background(),
-				fmt.Sprintf("Balance Less than %d Balance,chains=%s addr=%s balance=%0.4f",
-					m.waterLine.Int64(), m.Cfg.Name, form, balance))
-			continue
-		}
+func (m *Monitor) checkBalance(form, group string, waterLine *big.Int, report bool) {
+	// get account balance
+	account, err := m.conn.cli.GetAccount(form)
+	if err != nil {
+		m.Log.Error("CheckBalance GetAccount failed", "account", form, "err", err)
+		return
 	}
+	balance, _ := big.NewFloat(0).Quo(big.NewFloat(0).SetInt64(account.Balance), wei).Float64()
+	m.Log.Info("CheckBalance, account detail", "account", form, "balance", balance)
+	if balance < float64(waterLine.Int64()) {
+		util.Alarm(context.Background(),
+			fmt.Sprintf("Balance Less than %d Balance,chains=%s group=%s addr=%s balance=%0.4f",
+				waterLine.Int64(), m.Cfg.Name, group, form, balance))
+		return
+	}
+
 }
 
 func (m *Monitor) checkEnergy() {

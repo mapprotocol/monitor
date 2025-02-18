@@ -63,7 +63,7 @@ func (m *Monitor) sync() error {
 		return nil
 	}
 	m.waterLine = waterLine
-	// assamble users
+	// assemble users
 	for _, from := range m.Cfg.From {
 		m.balMapping[from] = 0
 	}
@@ -78,20 +78,22 @@ func (m *Monitor) sync() error {
 		case <-m.Stop:
 			return errors.New("polling terminated")
 		default:
-			m.reportUser()
-			for _, from := range m.Cfg.From {
-				m.checkBalance(common.HexToAddress(from), m.waterLine, false)
+			//m.reportUser()
+			for _, ele := range m.Cfg.From {
+				if ele == "" {
+					continue
+				}
+				m.checkBalance(common.HexToAddress(ele), m.waterLine, "unknown", false)
 			}
 
 			for _, user := range m.Cfg.Users {
 				wl, ok := new(big.Int).SetString(user.WaterLine, 10)
 				if !ok {
-					fmt.Println("---------------")
 					m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
 					return nil
 				}
 				for _, from := range strings.Split(user.From, ",") {
-					m.checkBalance(common.HexToAddress(from), wl, false)
+					m.checkBalance(common.HexToAddress(from), wl, user.Group, false)
 				}
 			}
 
@@ -147,7 +149,7 @@ func (m *Monitor) reportUser() {
 	m.balMapping = now
 }
 
-func (m *Monitor) checkBalance(addr common.Address, waterLine *big.Int, report bool) {
+func (m *Monitor) checkBalance(addr common.Address, waterLine *big.Int, group string, report bool) {
 	balance, err := m.Conn.Client().BalanceAt(context.Background(), addr, nil)
 	if err != nil {
 		m.Log.Error("Unable to get user balance failed", "from", addr, "err", err)
@@ -165,7 +167,7 @@ func (m *Monitor) checkBalance(addr common.Address, waterLine *big.Int, report b
 	if balance.Cmp(waterLine) == -1 {
 		// alarm
 		util.Alarm(context.Background(),
-			fmt.Sprintf("Balance Less than %0.4f Balance,chains=%s addr=%s balance=%0.4f", wl, m.Cfg.Name, addr, bal))
+			fmt.Sprintf("Balance Less than %0.4f Balance,chains=%s group=%s addr=%s balance=%0.4f", wl, m.Cfg.Name, group, addr, bal))
 	}
 
 	now := time.Now().UTC()
