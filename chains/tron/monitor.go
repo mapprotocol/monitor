@@ -168,7 +168,7 @@ func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) 
 		if overage < tk.WaterLine {
 			// alarm
 			util.Alarm(context.Background(),
-				fmt.Sprintf("Token Less than waterLine ,chains=%s token=%s overage=%0.4f", m.Cfg.Name, tk.Name, overage))
+				fmt.Sprintf("Token Less than %0.4f waterLine ,chains=%s token=%s addr=%s overage=%0.4f", tk.WaterLine, m.Cfg.Name, tk.Name, contract, overage))
 		}
 	}
 }
