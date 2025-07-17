@@ -70,13 +70,14 @@ func (m *Monitor) sync() error {
 			}
 
 			for _, ele := range m.Cfg.Users {
-				wl, ok := new(big.Int).SetString(ele.WaterLine, 10)
+				wl, ok := new(big.Float).SetString(ele.WaterLine)
+				wlFloat, _ := wl.Float64()
 				if !ok {
 					m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
 					return nil
 				}
 				for _, addr := range strings.Split(ele.From, ",") {
-					m.checkBalance(addr, ele.Group, float64(wl.Int64()))
+					m.checkBalance(addr, ele.Group, wlFloat)
 				}
 			}
 
