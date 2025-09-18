@@ -1,10 +1,12 @@
 package main
 
 import (
+	"strconv"
+
 	"github.com/mapprotocol/monitor/chains/near"
 	"github.com/mapprotocol/monitor/chains/sol"
 	"github.com/mapprotocol/monitor/chains/tron"
-	"strconv"
+	"github.com/mapprotocol/monitor/chains/xrp"
 
 	log "github.com/ChainSafe/log15"
 	"github.com/ethereum/go-ethereum/common"
@@ -81,6 +83,8 @@ func run(ctx *cli.Context) error {
 			newChain, err = tron.New(chainConfig, logger, sysErr, &cfg.Tk, &cfg.Genni, ac.Users)
 		case config.Sol:
 			newChain, err = sol.New(chainConfig, logger, sysErr, &cfg.Tk, &cfg.Genni, ac.Users)
+		case config.Xrp:
+			newChain, err = xrp.New(chainConfig, logger, sysErr, &cfg.Tk, &cfg.Genni, ac.Users)
 		default:
 			newChain, err = eth.InitializeChain(chainConfig, logger, sysErr, &cfg.Tk, &cfg.Genni, ac.Users)
 		}

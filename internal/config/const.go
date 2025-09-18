@@ -1,9 +1,10 @@
 package config
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -16,6 +17,7 @@ const (
 	Near = "near"
 	Tron = "tron"
 	Sol  = "sol"
+	Xrp  = "xrp"
 )
 
 const (
