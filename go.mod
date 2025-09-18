@@ -1,6 +1,8 @@
 module github.com/mapprotocol/monitor
 
-go 1.20
+go 1.23.0
+
+toolchain go1.24.1
 
 require (
 	github.com/ChainSafe/chainbridge-utils v1.0.6
@@ -10,12 +12,13 @@ require (
 	github.com/ethereum/go-ethereum v1.12.2
 	github.com/gagliardetto/solana-go v1.12.0
 	github.com/lbtsm/gotron-sdk v0.0.0-20240606062614-534038e71cd3
+	github.com/lbtsm/xrpl-go v0.0.0-20250401072254-6a30c9878c27
 	github.com/mapprotocol/near-api-go v0.0.0-20220801061430-b9e1d4580dc5
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.3.1
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.24.1
-	golang.org/x/crypto v0.9.0
+	golang.org/x/crypto v0.36.0
 	google.golang.org/grpc v1.38.0
 )
 
@@ -63,7 +66,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
 	github.com/holiman/billy v0.0.0-20230718173358-1c7e68d277a7 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
@@ -81,7 +84,7 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
-	github.com/mitchellh/mapstructure v1.4.1 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/pointerstructure v1.2.0 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -117,11 +120,11 @@ require (
 	go.uber.org/ratelimit v0.2.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/exp v0.0.0-20230810033253-352e893a4cad // indirect
-	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.9.0 // indirect
-	golang.org/x/term v0.8.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/term v0.30.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20210624195500-8bfb893ecb84 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
