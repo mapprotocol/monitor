@@ -70,6 +70,7 @@ func run(ctx *cli.Context) error {
 			Opts:             ac.Opts,
 			ContractToken:    ac.ContractToken,
 			Energies:         ac.Energies,
+			Tss:              ac.Tss,
 		}
 		var (
 			newChain chain.Chain

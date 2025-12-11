@@ -4,7 +4,6 @@ import (
 	"github.com/ChainSafe/log15"
 	"github.com/mapprotocol/monitor/internal/chain"
 	"github.com/mapprotocol/monitor/internal/config"
-	"github.com/mapprotocol/monitor/pkg/blockstore"
 	"github.com/mapprotocol/monitor/pkg/keystore"
 	nearclient "github.com/mapprotocol/near-api-go/pkg/client"
 )
@@ -27,11 +26,6 @@ func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr c
 		return nil, err
 	}
 
-	bs, err := blockstore.NewBlockstore("", cfg.Id, kp.PublicKey.ToPublicKey().Hash())
-	if err != nil {
-		return nil, err
-	}
-
 	stop := make(chan int)
 	conn := newConnection(cfg.Endpoint, true, &kp, logger, cfg.GasLimit, cfg.MaxGasPrice, cfg.GasMultiplier)
 	err = conn.Connect()
@@ -41,7 +35,7 @@ func InitializeChain(chainCfg *config.ChainConfig, logger log15.Logger, sysErr c
 
 	// simplified a little bit
 	var listen chain.Listener
-	cs := newCommonListen(conn, cfg, logger, stop, sysErr, bs)
+	cs := newCommonListen(conn, cfg, logger, stop, sysErr)
 	listen = newMonitor(cs)
 
 	return &Chain{

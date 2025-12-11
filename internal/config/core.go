@@ -15,4 +15,5 @@ type ChainConfig struct {
 	Opts             map[string]string // Per chains options
 	ContractToken    []ContractToken
 	Energies         []Energy
+	Tss              *Tss
 }

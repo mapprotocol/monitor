@@ -3,6 +3,9 @@ package mapprotocol
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"strings"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -10,8 +13,6 @@ import (
 	"github.com/mapprotocol/monitor/internal/config"
 	"github.com/mapprotocol/monitor/pkg/ethclient"
 	"github.com/pkg/errors"
-	"math/big"
-	"strings"
 )
 
 var (

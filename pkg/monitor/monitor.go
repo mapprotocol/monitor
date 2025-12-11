@@ -3,9 +3,7 @@ package monitor
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum"
 	"io"
 	"math/big"
 	"net/http"
@@ -15,8 +13,12 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/cockroachdb/errors"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	abiJson "github.com/mapprotocol/monitor/internal/abi"
 	"github.com/mapprotocol/monitor/internal/chain"
 	"github.com/mapprotocol/monitor/internal/config"
 	"github.com/mapprotocol/monitor/internal/mapprotocol"
@@ -58,7 +60,6 @@ func (m *Monitor) Sync() error {
 func (m *Monitor) sync() error {
 	waterLine, ok := new(big.Int).SetString(m.Cfg.WaterLine, 10)
 	if !ok {
-		fmt.Println("--------------- 111")
 		m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
 		return nil
 	}
@@ -261,6 +262,257 @@ func (m *Monitor) mapCheck() {
 		}
 		time.Sleep(time.Second)
 	}
+
+	if m.Cfg.Tss != nil {
+		m.tssCheck()
+	}
+}
+
+type EpochInfo struct {
+	ElectedBlock  uint64
+	StartBlock    uint64
+	EndBlock      uint64
+	MigratedBlock uint64
+	Maintainers   []common.Address
+}
+
+type MaintainerInfo struct {
+	Status            uint8          `json:"status,omitempty"`
+	Account           common.Address `json:"account,omitempty"`
+	LastHeartbeatTime *big.Int       `json:"last_heartbeat_time,omitempty"`
+	LastActiveEpoch   *big.Int       `json:"last_active_epoch,omitempty"`
+	Secp256Pubkey     []byte         `json:"secp_256_pubkey,omitempty"`
+	Ed25519Pubkey     []byte         `json:"ed_25519_pubkey,omitempty"`
+	P2pAddress        string         `json:"p_2_p_address,omitempty"`
+}
+
+func (m *Monitor) tssCheck() {
+	maintainerAddr := m.Cfg.Tss.Maintainer
+	mainAbi, err := abi.JSON(strings.NewReader(abiJson.MaintainerABI))
+	if err != nil {
+		m.Log.Error("failed to abi json", "err", err)
+		return
+	}
+
+	method := "currentEpoch"
+	input, err := mainAbi.Pack(method)
+	if err != nil {
+		m.Log.Error("failed to pack input", "method", method, "err", err)
+		return
+	}
+	// get epoch id
+	var epoch *big.Int
+	err = m.callContract(&epoch, maintainerAddr, method, input, &mainAbi)
+	if err != nil {
+		m.Log.Error("failed to call contract", "method", method, "err", err)
+		return
+	}
+	if epoch.Int64() == 0 {
+		m.Log.Info("epoch is zero")
+		return
+	}
+
+	// get epoch info
+	method = "getEpochInfo"
+	input, err = mainAbi.Pack(method, epoch)
+	if err != nil {
+		m.Log.Error("failed to pack input", "method", method, "err", err)
+		return
+	}
+	epochInfo := struct {
+		Info EpochInfo
+	}{}
+	err = m.callContract(&epochInfo, maintainerAddr, method, input, &mainAbi)
+	if err != nil {
+		m.Log.Error("failed to call contract", "method", method, "err", err)
+		return
+	}
+
+	// get maintainer info
+	method = "getMaintainerInfos"
+	input, err = mainAbi.Pack(method, epochInfo.Info.Maintainers)
+	if err != nil {
+		m.Log.Error("failed to pack input", "method", method, "err", err)
+		return
+	}
+
+	type Back struct {
+		Infos []MaintainerInfo `json:"infos"`
+	}
+	var ret Back
+	err = m.callContract(&ret, maintainerAddr, method, input, &mainAbi)
+	if err != nil {
+		m.Log.Error("failed to call contract", "method", method, "err", err)
+		return
+	}
+	m.checkNodeHealth(ret.Infos)
+	m.checkScanner(ret.Infos)
+	m.checkP2pStatus(ret.Infos)
+}
+
+func (m *Monitor) checkNodeHealth(infos []MaintainerInfo) {
+	for _, info := range infos {
+		url := fmt.Sprintf("http://%s:6040/ping", info.P2pAddress)
+
+		resp, err := http.Get(url)
+		if err != nil {
+			m.Log.Error("failed to get node health", "address", info.P2pAddress, "err", err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			util.Alarm(context.Background(), fmt.Sprintf("node(%s) is unhealthy ", info.Account.Hex()))
+		}
+	}
+}
+
+func (m *Monitor) checkP2pStatus(infos []MaintainerInfo) {
+	for _, info := range infos {
+		p2pStatus, err := m.GetP2PStatus(info.P2pAddress)
+		if err != nil {
+			util.Alarm(context.Background(),
+				fmt.Sprintf("failed to get P2P status, address=%s ip=%s, err=%s", info.Account, info.P2pAddress, err))
+			continue
+		}
+		if p2pStatus == nil {
+			continue
+		}
+		if p2pStatus.Errors != nil {
+			util.Alarm(context.Background(),
+				fmt.Sprintf("P2P status error, address=%s ip=%s, errors=%s", info.Account, info.P2pAddress, p2pStatus.Errors))
+			continue
+		}
+		if len(p2pStatus.Peers) == 0 {
+			util.Alarm(context.Background(),
+				fmt.Sprintf("P2P peerNode is empty, address=%s ip=%s", info.Account, info.P2pAddress))
+			continue
+		}
+		m.Log.Info("P2P status", "address", info.P2pAddress, "status", p2pStatus)
+	}
+}
+
+type P2PStatusPeer struct {
+	Address        string `json:"address"`
+	IP             string `json:"ip"`
+	Status         string `json:"status"`
+	StoredPeerID   string `json:"stored_peer_id"`
+	NodesPeerID    string `json:"nodes_peer_id"`
+	ReturnedPeerID string `json:"returned_peer_id"`
+	P2PPortOpen    bool   `json:"p2p_port_open"`
+	P2PDialMs      int    `json:"p2p_dial_ms"`
+}
+
+// P2PStatusResponse represents the response from /status/p2p endpoint
+type P2PStatusResponse struct {
+	Peers     []P2PStatusPeer `json:"peers"`
+	PeerCount int             `json:"peer_count"`
+	Errors    interface{}     `json:"errors"`
+}
+
+// GetP2PStatus fetches P2P status from the given IP address
+func (m *Monitor) GetP2PStatus(ipAddress string) (*P2PStatusResponse, error) {
+	url := fmt.Sprintf("http://%s:6040/status/p2p", ipAddress)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to request P2P status: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("received non-200 response code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	var statusResponse P2PStatusResponse
+	if err := json.Unmarshal(body, &statusResponse); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %v", err)
+	}
+
+	return &statusResponse, nil
+}
+
+func (m *Monitor) checkScanner(infos []MaintainerInfo) {
+	for _, info := range infos {
+		scanner, err := m.GetScannerStatus(info.P2pAddress)
+		if err != nil {
+			util.Alarm(context.Background(),
+				fmt.Sprintf("failed to node(%s) get scanner status for node %s: %v",
+					info.Account.Hex(), err))
+			continue
+		}
+		for k, v := range scanner {
+			if v.ScannerHeightDiff < 10 {
+				continue
+			}
+			util.Alarm(context.Background(),
+				fmt.Sprintf("node(%s) scanner height difference too high for %s chain: %d",
+					info.Account.Hex(), k, v.ScannerHeightDiff))
+		}
+	}
+}
+
+type ScannerStatus struct {
+	Chain              string `json:"chain"`
+	ChainHeight        int64  `json:"chain_height"`
+	BlockScannerHeight int64  `json:"block_scanner_height"`
+	ScannerHeightDiff  int64  `json:"scanner_height_diff"`
+}
+
+// ScannerStatusResponse represents the response from /status/scanner endpoint
+type ScannerStatusResponse map[string]ScannerStatus
+
+// GetScannerStatus fetches scanner status from the given IP address
+func (m *Monitor) GetScannerStatus(ipAddress string) (ScannerStatusResponse, error) {
+	url := fmt.Sprintf("http://%s:6040/status/scanner", ipAddress)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to request scanner status: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("received non-200 response code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	var statusResponse ScannerStatusResponse
+	if err := json.Unmarshal(body, &statusResponse); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %v", err)
+	}
+
+	return statusResponse, nil
+}
+
+func (m *Monitor) callContract(ret interface{}, addr, method string, input []byte, abi *abi.ABI) error {
+	to := common.HexToAddress(addr)
+	outPut, err := mapprotocol.GlobalMapConn.CallContract(context.Background(), ethereum.CallMsg{
+		From: config.ZeroAddress,
+		To:   &to,
+		Data: input,
+	}, nil)
+	if err != nil {
+		return errors.Wrapf(err, "unable to call contract %s", method)
+	}
+
+	outputs := abi.Methods[method].Outputs
+	unpack, err := outputs.Unpack(outPut)
+	if err != nil {
+		return errors.Wrap(err, "unpack output")
+	}
+
+	if err = outputs.Copy(ret, unpack); err != nil {
+		return errors.Wrap(err, "copy output")
+	}
+	return nil
 }
 
 func (m *Monitor) nativeCheck(contract string) {

@@ -27,6 +27,7 @@ type RawChainConfig struct {
 	Users         []From            `json:"users"`
 	ContractToken []ContractToken   `json:"contractToken"`
 	Energies      []Energy          `json:"energy"`
+	Tss           *Tss              `json:"tss"`
 }
 
 type Config struct {
@@ -71,6 +72,10 @@ type From struct {
 	Group     string `json:"group"`
 	From      string `json:"from"`
 	WaterLine string `json:"waterLine"`
+}
+
+type Tss struct {
+	Maintainer string `json:"maintainer"`
 }
 
 func (c *Config) validate() error {
@@ -168,6 +173,7 @@ type OptConfig struct {
 	Users          []From
 	ContractToken  []ContractToken
 	Energies       []Energy
+	Tss            *Tss
 }
 
 // ParseOptConfig uses a core.ChainConfig to construct a corresponding Config
@@ -190,6 +196,7 @@ func ParseOptConfig(chainCfg *ChainConfig, tks *Token, genni *Api, users []From)
 		ContractToken:  chainCfg.ContractToken,
 		Energies:       chainCfg.Energies,
 		Users:          users,
+		Tss:            chainCfg.Tss,
 	}
 
 	if chainCfg.NearKeystorePath != "" {
