@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 var (
@@ -39,7 +40,7 @@ func Alarm(ctx context.Context, msg string) {
 	if err != nil {
 		return
 	}
-	req, err := http.NewRequestWithContext(ctx, "POST", hooksUrl, ioutil.NopCloser(bytes.NewReader(body)))
+	req, err := http.NewRequestWithContext(ctx, "POST", hooksUrl, io.NopCloser(bytes.NewReader(body)))
 	if err != nil {
 		return
 	}
@@ -50,7 +51,7 @@ func Alarm(ctx context.Context, msg string) {
 		return
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Warn("read resp failed", "err", err)
 		return
