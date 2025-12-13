@@ -441,8 +441,8 @@ func (m *Monitor) checkScanner(infos []MaintainerInfo) {
 		scanner, err := m.GetScannerStatus(info.P2pAddress)
 		if err != nil {
 			util.Alarm(context.Background(),
-				fmt.Sprintf("failed to node(%s) get scanner status for node %s: %v",
-					info.Account.Hex(), err))
+				fmt.Sprintf("failed to node(%s) get scanner status for node :%v",
+					info.Account.Hex(), err.Error()))
 			continue
 		}
 		for k, v := range scanner {
@@ -450,8 +450,8 @@ func (m *Monitor) checkScanner(infos []MaintainerInfo) {
 				continue
 			}
 			util.Alarm(context.Background(),
-				fmt.Sprintf("node(%s) scanner height difference too high for %s chain: %d",
-					info.Account.Hex(), k, v.ScannerHeightDiff))
+				fmt.Sprintf("node(%s) scanner height difference too high for %s chain: latest:%d, current:%d diff:%d",
+					info.Account.Hex(), k, v.ChainHeight, v.BlockScannerHeight, v.ScannerHeightDiff))
 		}
 	}
 }
