@@ -17,7 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-	mapoabi "github.com/mapprotocol/mapo-lib/abi"
+	mapoabi "github.com/lbtsm/mapo-lib/abi"
 	abiJson "github.com/mapprotocol/monitor/internal/abi"
 	"github.com/mapprotocol/monitor/internal/chain"
 	"github.com/mapprotocol/monitor/internal/config"

@@ -2,8 +2,6 @@ module github.com/mapprotocol/monitor
 
 go 1.25.0
 
-replace github.com/mapprotocol/mapo-lib => /Users/zmm/Desktop/code/github/mapo-lib
-
 require (
 	github.com/ChainSafe/chainbridge-utils v1.0.6
 	github.com/ChainSafe/log15 v1.0.0
@@ -13,8 +11,8 @@ require (
 	github.com/ethereum/go-ethereum v1.17.2
 	github.com/gagliardetto/solana-go v1.12.0
 	github.com/lbtsm/gotron-sdk v0.0.0-20240606062614-534038e71cd3
+	github.com/lbtsm/mapo-lib v0.0.0-20260411112600-6643df794116
 	github.com/lbtsm/xrpl-go v0.0.0-20250401072254-6a30c9878c27
-	github.com/mapprotocol/mapo-lib v0.0.0-00010101000000-000000000000
 	github.com/mapprotocol/near-api-go v0.0.0-20220801061430-b9e1d4580dc5
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.3.1
