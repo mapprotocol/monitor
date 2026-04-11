@@ -3,6 +3,10 @@ package tron
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mapprotocol/monitor/internal/chain"
@@ -10,9 +14,6 @@ import (
 	"github.com/mapprotocol/monitor/internal/mapprotocol"
 	"github.com/mapprotocol/monitor/pkg/util"
 	"github.com/pkg/errors"
-	"math/big"
-	"strings"
-	"time"
 )
 
 var (
@@ -127,32 +128,20 @@ func (m *Monitor) checkEnergy() {
 func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) {
 	for _, tk := range tokens {
 		ad := common.HexToAddress(tk.Addr)
-		input, err := mapprotocol.PackInput(mapprotocol.Token, mapprotocol.BalanceOfyMethod, contract)
+		input, err := mapprotocol.TokenAbi.PackInput("balanceOf", contract)
 		if err != nil {
 			continue
 		}
 		outPut, err := m.Conn.Client().CallContract(context.Background(),
-			ethereum.CallMsg{
-				From: config.ZeroAddress,
-				To:   &ad,
-				Data: input,
-			},
-			nil,
-		)
+			ethereum.CallMsg{To: &ad, Data: input}, nil)
 		if err != nil {
-			m.Log.Error("CheckToken callContract verify failed", "err", err.Error(), "to", ad)
-			continue
-		}
-
-		resp, err := mapprotocol.Token.Methods[mapprotocol.BalanceOfyMethod].Outputs.Unpack(outPut)
-		if err != nil {
-			m.Log.Error("CheckToken Proof call failed ", "err", err.Error())
+			m.Log.Error("CheckToken callContract failed", "err", err.Error(), "to", ad)
 			continue
 		}
 
 		var ret *big.Int
-		err = mapprotocol.Token.Methods[mapprotocol.BalanceOfyMethod].Outputs.Copy(&ret, resp)
-		if err != nil {
+		if err = mapprotocol.TokenAbi.UnpackOutput("balanceOf", &ret, outPut); err != nil {
+			m.Log.Error("CheckToken unpack failed", "err", err.Error())
 			continue
 		}
 

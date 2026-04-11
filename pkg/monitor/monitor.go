@@ -15,9 +15,9 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cockroachdb/errors"
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	mapoabi "github.com/mapprotocol/mapo-lib/abi"
 	abiJson "github.com/mapprotocol/monitor/internal/abi"
 	"github.com/mapprotocol/monitor/internal/chain"
 	"github.com/mapprotocol/monitor/internal/config"
@@ -181,32 +181,20 @@ func (m *Monitor) checkBalance(addr common.Address, waterLine *big.Int, group st
 func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) {
 	for _, tk := range tokens {
 		ad := common.HexToAddress(tk.Addr)
-		input, err := mapprotocol.PackInput(mapprotocol.Token, mapprotocol.BalanceOfyMethod, contract)
+		input, err := mapprotocol.TokenAbi.PackInput("balanceOf", contract)
 		if err != nil {
 			continue
 		}
 		outPut, err := m.Conn.Client().CallContract(context.Background(),
-			ethereum.CallMsg{
-				From: config.ZeroAddress,
-				To:   &ad,
-				Data: input,
-			},
-			nil,
-		)
+			ethereum.CallMsg{To: &ad, Data: input}, nil)
 		if err != nil {
-			m.Log.Error("CheckToken callContract verify failed", "err", err.Error(), "to", ad)
-			continue
-		}
-
-		resp, err := mapprotocol.Token.Methods[mapprotocol.BalanceOfyMethod].Outputs.Unpack(outPut)
-		if err != nil {
-			m.Log.Error("CheckToken Proof call failed ", "err", err.Error())
+			m.Log.Error("CheckToken callContract failed", "err", err.Error(), "to", ad)
 			continue
 		}
 
 		var ret *big.Int
-		err = mapprotocol.Token.Methods[mapprotocol.BalanceOfyMethod].Outputs.Copy(&ret, resp)
-		if err != nil {
+		if err = mapprotocol.TokenAbi.UnpackOutput("balanceOf", &ret, outPut); err != nil {
+			m.Log.Error("CheckToken unpack failed", "err", err.Error())
 			continue
 		}
 
@@ -288,23 +276,16 @@ type MaintainerInfo struct {
 
 func (m *Monitor) tssCheck() {
 	maintainerAddr := m.Cfg.Tss.Maintainer
-	mainAbi, err := abi.JSON(strings.NewReader(abiJson.MaintainerABI))
+	mainAbi, err := mapoabi.New(abiJson.MaintainerABI)
 	if err != nil {
-		m.Log.Error("failed to abi json", "err", err)
+		m.Log.Error("failed to parse maintainer abi", "err", err)
 		return
 	}
 
-	method := "currentEpoch"
-	input, err := mainAbi.Pack(method)
-	if err != nil {
-		m.Log.Error("failed to pack input", "method", method, "err", err)
-		return
-	}
 	// get epoch id
 	var epoch *big.Int
-	err = m.callContract(&epoch, maintainerAddr, method, input, &mainAbi)
-	if err != nil {
-		m.Log.Error("failed to call contract", "method", method, "err", err)
+	if err = m.callContract(&epoch, maintainerAddr, "currentEpoch", mainAbi); err != nil {
+		m.Log.Error("failed to call contract", "method", "currentEpoch", "err", err)
 		return
 	}
 	if epoch.Int64() == 0 {
@@ -313,36 +294,19 @@ func (m *Monitor) tssCheck() {
 	}
 
 	// get epoch info
-	method = "getEpochInfo"
-	input, err = mainAbi.Pack(method, epoch)
-	if err != nil {
-		m.Log.Error("failed to pack input", "method", method, "err", err)
-		return
-	}
-	epochInfo := struct {
-		Info EpochInfo
-	}{}
-	err = m.callContract(&epochInfo, maintainerAddr, method, input, &mainAbi)
-	if err != nil {
-		m.Log.Error("failed to call contract", "method", method, "err", err)
+	epochInfo := struct{ Info EpochInfo }{}
+	if err = m.callContract(&epochInfo, maintainerAddr, "getEpochInfo", mainAbi, epoch); err != nil {
+		m.Log.Error("failed to call contract", "method", "getEpochInfo", "err", err)
 		return
 	}
 
 	// get maintainer info
-	method = "getMaintainerInfos"
-	input, err = mainAbi.Pack(method, epochInfo.Info.Maintainers)
-	if err != nil {
-		m.Log.Error("failed to pack input", "method", method, "err", err)
-		return
-	}
-
 	type Back struct {
 		Infos []MaintainerInfo `json:"infos"`
 	}
 	var ret Back
-	err = m.callContract(&ret, maintainerAddr, method, input, &mainAbi)
-	if err != nil {
-		m.Log.Error("failed to call contract", "method", method, "err", err)
+	if err = m.callContract(&ret, maintainerAddr, "getMaintainerInfos", mainAbi, epochInfo.Info.Maintainers); err != nil {
+		m.Log.Error("failed to call contract", "method", "getMaintainerInfos", "err", err)
 		return
 	}
 	m.checkNodeHealth(ret.Infos)
@@ -492,27 +456,18 @@ func (m *Monitor) GetScannerStatus(ipAddress string) (ScannerStatusResponse, err
 	return statusResponse, nil
 }
 
-func (m *Monitor) callContract(ret interface{}, addr, method string, input []byte, abi *abi.ABI) error {
+func (m *Monitor) callContract(ret interface{}, addr, method string, abiInst *mapoabi.Abi, params ...interface{}) error {
+	input, err := abiInst.PackInput(method, params...)
+	if err != nil {
+		return errors.Wrapf(err, "pack input for %s", method)
+	}
 	to := common.HexToAddress(addr)
-	outPut, err := mapprotocol.GlobalMapConn.CallContract(context.Background(), ethereum.CallMsg{
-		From: config.ZeroAddress,
-		To:   &to,
-		Data: input,
-	}, nil)
+	output, err := mapprotocol.GlobalMapConn.CallContract(context.Background(),
+		ethereum.CallMsg{To: &to, Data: input}, nil)
 	if err != nil {
-		return errors.Wrapf(err, "unable to call contract %s", method)
+		return errors.Wrapf(err, "call contract %s", method)
 	}
-
-	outputs := abi.Methods[method].Outputs
-	unpack, err := outputs.Unpack(outPut)
-	if err != nil {
-		return errors.Wrap(err, "unpack output")
-	}
-
-	if err = outputs.Copy(ret, unpack); err != nil {
-		return errors.Wrap(err, "copy output")
-	}
-	return nil
+	return abiInst.UnpackOutput(method, ret, output)
 }
 
 func (m *Monitor) nativeCheck(contract string) {

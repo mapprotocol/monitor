@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
+	"path/filepath"
+	"strconv"
+
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/mapprotocol/monitor/internal/config"
 	"github.com/urfave/cli/v2"
-	"path/filepath"
-	"strconv"
 )
 
 // dataHandler is a struct which wraps any extra data our CMD functions need that cannot be passed through parameters
@@ -15,17 +17,26 @@ type dataHandler struct {
 }
 
 func startLogger(ctx *cli.Context) error {
-	logger := log.Root()
-	handler := logger.GetHandler()
-	var lvl log.Lvl
-
-	if lvlToInt, err := strconv.Atoi(ctx.String(config.VerbosityFlag.Name)); err == nil {
-		lvl = log.Lvl(lvlToInt)
-	} else if lvl, err = log.LvlFromString(ctx.String(config.VerbosityFlag.Name)); err != nil {
-		return err
+	verbosity := ctx.String(config.VerbosityFlag.Name)
+	lvl := slog.LevelInfo
+	if lvlInt, err := strconv.Atoi(verbosity); err == nil {
+		// map old log15 levels (0=crit..5=trace) to slog levels
+		switch {
+		case lvlInt <= 0:
+			lvl = slog.LevelError + 4 // crit
+		case lvlInt == 1:
+			lvl = slog.LevelError
+		case lvlInt == 2:
+			lvl = slog.LevelWarn
+		case lvlInt == 3:
+			lvl = slog.LevelInfo
+		case lvlInt == 4:
+			lvl = slog.LevelDebug
+		default:
+			lvl = slog.LevelDebug - 4 // trace
+		}
 	}
-	log.Root().SetHandler(log.LvlFilterHandler(lvl, handler))
-
+	log.SetDefault(log.NewLogger(log.NewTerminalHandlerWithLevel(nil, lvl, true)))
 	return nil
 }
 

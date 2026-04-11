@@ -3,7 +3,7 @@ package xrp
 import (
 	"math/big"
 
-	"github.com/mapprotocol/monitor/pkg/ethclient"
+	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 
