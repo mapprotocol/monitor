@@ -7,11 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/lbtsm/gotron-sdk/pkg/address"
 	"github.com/mapprotocol/monitor/internal/chain"
 	"github.com/mapprotocol/monitor/internal/config"
-	"github.com/mapprotocol/monitor/internal/mapprotocol"
 	"github.com/mapprotocol/monitor/pkg/util"
 	"github.com/pkg/errors"
 )
@@ -125,23 +124,19 @@ func (m *Monitor) checkEnergy() {
 	}
 }
 
-func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) {
-	for _, tk := range tokens {
-		ad := common.HexToAddress(tk.Addr)
-		input, err := mapprotocol.TokenAbi.PackInput("balanceOf", contract)
-		if err != nil {
-			continue
-		}
-		outPut, err := m.Conn.Client().CallContract(context.Background(),
-			ethereum.CallMsg{To: &ad, Data: input}, nil)
-		if err != nil {
-			m.Log.Error("CheckToken callContract failed", "err", err.Error(), "to", ad)
-			continue
-		}
+// hexToTronBase58 converts an ethereum hex address (0x...) to tron base58 format.
+func hexToTronBase58(hexAddr string) string {
+	tronHex := "41" + strings.TrimPrefix(strings.ToLower(hexAddr), "0x")
+	return address.HexToAddress(tronHex).String()
+}
 
-		var ret *big.Int
-		if err = mapprotocol.TokenAbi.UnpackOutput("balanceOf", &ret, outPut); err != nil {
-			m.Log.Error("CheckToken unpack failed", "err", err.Error())
+func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) {
+	holderBase58 := hexToTronBase58(contract.Hex())
+	for _, tk := range tokens {
+		tokenBase58 := hexToTronBase58(tk.Addr)
+		ret, err := m.conn.cli.TRC20ContractBalance(holderBase58, tokenBase58)
+		if err != nil {
+			m.Log.Error("CheckToken TRC20ContractBalance failed", "err", err, "token", tk.Name)
 			continue
 		}
 
@@ -152,10 +147,8 @@ func (m *Monitor) checkToken(contract common.Address, tokens []config.EthToken) 
 
 		retF, _ := ret.Float64()
 		overage, _ := big.NewFloat(0).Quo(big.NewFloat(retF), util.ToWeiFloat(int64(1), int(wei))).Float64()
-		//overage, _ := ret.Div(ret, util.ToWei(int64(1), int(wei))).Float64()
 		m.Log.Info("Get Token result", "token", tk.Name, "overage", overage, "addr", tk.Addr)
 		if overage < tk.WaterLine {
-			// alarm
 			util.Alarm(context.Background(),
 				fmt.Sprintf("Token Less than %0.4f waterLine ,chains=%s token=%s addr=%s overage=%0.4f", tk.WaterLine, m.Cfg.Name, tk.Name, contract, overage))
 		}
