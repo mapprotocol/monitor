@@ -289,6 +289,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/lbtsm/gotron-sdk v0.0.0-20240606062614-534038e71cd3 h1:qQl12EKzZEBlO673q0JcwYmKcchsNU3AmUk+tpil07A=
 github.com/lbtsm/gotron-sdk v0.0.0-20240606062614-534038e71cd3/go.mod h1:rwhdwJSs5ffxJP/rWDjwOmOm95jHuGctideF2iKVly8=
+github.com/lbtsm/mapo-lib v0.0.0-20260411112600-6643df794116 h1:WTG79v6kjLuRsmWtORRNCDYTLzVXNSawdTYqPMeKr/o=
+github.com/lbtsm/mapo-lib v0.0.0-20260411112600-6643df794116/go.mod h1:MhaVTnmlkLc2utnWLZWDMJkqAigPMh83kaUQ02t8aME=
 github.com/lbtsm/xrpl-go v0.0.0-20250401072254-6a30c9878c27 h1:UfMTh1fPvyOXtlgoxDgdKvf15NX5beASpzYxAnWYQ0w=
 github.com/lbtsm/xrpl-go v0.0.0-20250401072254-6a30c9878c27/go.mod h1:3WDeeVRln8LFAsQYHzRIbLUSaLPZ7nEOy3FLKiTqTx0=
 github.com/leanovate/gopter v0.2.11 h1:vRjThO1EKPb/1NsDXuDrzldR28RLkBflWYcU9CvzWu4=

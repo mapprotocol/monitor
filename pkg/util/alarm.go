@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mapprotocol/mapo-lib/alarm"
+	"github.com/lbtsm/mapo-lib/alarm"
 )
 
 var Env = ""
