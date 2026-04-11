@@ -17,7 +17,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/mapprotocol/monitor/pkg/ethclient"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 var BlockRetryInterval = time.Second * 5

@@ -1,7 +1,7 @@
 package tron
 
 import (
-	"github.com/mapprotocol/monitor/pkg/ethclient"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
 	"time"
 

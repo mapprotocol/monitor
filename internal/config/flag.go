@@ -1,7 +1,6 @@
 package config
 
 import (
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 )
 
@@ -22,8 +21,8 @@ var (
 	}
 	VerbosityFlag = &cli.StringFlag{
 		Name:  "verbosity",
-		Usage: "Supports levels crit (silent) to trce (trace)",
-		Value: log.LvlInfo.String(),
+		Usage: "Supports levels: 0=crit, 1=error, 2=warn, 3=info, 4=debug, 5=trace",
+		Value: "3",
 	}
 	KeystorePathFlag = &cli.StringFlag{
 		Name:  "keystore",

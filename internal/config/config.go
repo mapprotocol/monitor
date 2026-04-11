@@ -30,12 +30,29 @@ type RawChainConfig struct {
 	Tss           *Tss              `json:"tss"`
 }
 
+type Defaults struct {
+	Users         []From            `json:"users"`
+	Opts          map[string]string `json:"opts"`
+	From          string            `json:"from"`
+	ContractToken []ContractToken   `json:"contractToken"`
+}
+
 type Config struct {
-	MapChain     RawChainConfig   `json:"mapchain"`
+	Defaults     Defaults         `json:"defaults"`
 	Chains       []RawChainConfig `json:"chains"`
 	KeystorePath string           `json:"keystorePath,omitempty"`
 	Tk           Token            `json:"token"`
 	Genni        Api              `json:"genni"`
+}
+
+// MapChainConfig returns the map chain config from the chains list.
+func (c *Config) MapChainConfig() *RawChainConfig {
+	for i := range c.Chains {
+		if strings.ToLower(c.Chains[i].Name) == "map" {
+			return &c.Chains[i]
+		}
+	}
+	return nil
 }
 
 type Token struct {
@@ -81,24 +98,16 @@ type Tss struct {
 
 func (c *Config) validate() error {
 	for _, chain := range c.Chains {
-		if chain.Id == "" {
-			return fmt.Errorf("required field chains.Id empty for chains %s", chain.Id)
-		}
 		if chain.Endpoint == "" {
-			return fmt.Errorf("required field chains.Endpoint empty for chains %s", chain.Id)
+			return fmt.Errorf("required field chains.Endpoint empty for chain %s", chain.Name)
 		}
 		if chain.Name == "" {
-			return fmt.Errorf("required field chains.Name empty for chains %s", chain.Id)
+			return fmt.Errorf("required field chains.Name empty for chain with id %s", chain.Id)
 		}
 	}
-	// check map chains
-	if c.MapChain.Id == "" {
-		return fmt.Errorf("required field chains.Id empty for chains %s", c.MapChain.Id)
+	if mc := c.MapChainConfig(); mc == nil {
+		return fmt.Errorf("map chain not found in chains list, please add a chain with name \"map\"")
 	}
-	if c.MapChain.Endpoint == "" {
-		return fmt.Errorf("required field mapchain.Endpoint empty for chains %s", c.MapChain.Id)
-	}
-
 	return nil
 }
 
@@ -117,15 +126,103 @@ func GetConfig(ctx *cli.Context) (*Config, error) {
 		fig.KeystorePath = ksPath
 	}
 	log.Debug("Loaded config", "path", path)
-	err = fig.validate()
-	// fill map chains config
-	fig.MapChain.Type = "ethereum"
-	fig.MapChain.Name = "map"
 
+	// apply defaults to chains
+	fig.applyDefaults()
+
+	err = fig.validate()
 	if err != nil {
 		return nil, err
 	}
 	return &fig, nil
+}
+
+// applyDefaults fills in missing chain fields from the top-level defaults and
+// resolves chain IDs from well-known chain names when not explicitly set.
+func (c *Config) applyDefaults() {
+	applyChainDefaults := func(chain *RawChainConfig) {
+		// default type is ethereum
+		if chain.Type == "" {
+			chain.Type = "ethereum"
+		}
+		// inherit from address
+		if chain.From == "" && c.Defaults.From != "" {
+			chain.From = c.Defaults.From
+		}
+		// inherit users: merge by group name so chains can omit repeated addresses
+		if len(c.Defaults.Users) > 0 {
+			if len(chain.Users) == 0 {
+				chain.Users = make([]From, len(c.Defaults.Users))
+				copy(chain.Users, c.Defaults.Users)
+			} else {
+				defaultUserMap := make(map[string]From)
+				for _, u := range c.Defaults.Users {
+					defaultUserMap[u.Group] = u
+				}
+				for i, u := range chain.Users {
+					if du, ok := defaultUserMap[u.Group]; ok {
+						if u.From == "" {
+							chain.Users[i].From = du.From
+						}
+						if u.WaterLine == "" {
+							chain.Users[i].WaterLine = du.WaterLine
+						}
+					}
+				}
+			}
+		}
+		// inherit contractToken
+		if len(chain.ContractToken) == 0 && len(c.Defaults.ContractToken) > 0 {
+			chain.ContractToken = c.Defaults.ContractToken
+		}
+		// inherit opts (merge: default opts first, chain opts override)
+		if len(c.Defaults.Opts) > 0 {
+			if chain.Opts == nil {
+				chain.Opts = make(map[string]string)
+			}
+			for k, v := range c.Defaults.Opts {
+				if _, exists := chain.Opts[k]; !exists {
+					chain.Opts[k] = v
+				}
+			}
+		}
+		// ensure opts is not nil
+		if chain.Opts == nil {
+			chain.Opts = make(map[string]string)
+		}
+		// resolve chain ID from well-known chain name if not set
+		if chain.Id == "" {
+			if id, ok := wellKnownChainIDs[strings.ToLower(chain.Name)]; ok {
+				chain.Id = id
+			}
+		}
+	}
+
+	for i := range c.Chains {
+		applyChainDefaults(&c.Chains[i])
+	}
+}
+
+// wellKnownChainIDs maps chain names to their mainnet chain IDs.
+var wellKnownChainIDs = map[string]string{
+	"bsc":    "56",
+	"eth":    "1",
+	"base":   "8453",
+	"arb":    "42161",
+	"opt":    "10",
+	"uni":    "130",
+	"pol":    "137",
+	"avax":   "43114",
+	"xlayer": "196",
+	"map":    "22776",
+	"btc":    "1360095883558913",
+	"doge":   "1360121653362689",
+	"xrp":    "1360117358395393",
+	"tron":   "728126428",
+	"sol":    "1360108768460801",
+	"klaytn": "8217",
+	"zksync": "324",
+	"merlin": "4200",
 }
 
 func loadConfig(file string, config *Config) error {

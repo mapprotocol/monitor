@@ -5,7 +5,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/mapprotocol/monitor/internal/chain"
 	"github.com/mapprotocol/monitor/internal/config"
-	"github.com/mapprotocol/monitor/pkg/ethclient"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/mapprotocol/monitor/pkg/ethereum"
 	"github.com/mapprotocol/monitor/pkg/monitor"
 )

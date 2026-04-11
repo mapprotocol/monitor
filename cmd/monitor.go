@@ -2,6 +2,7 @@ package main
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/mapprotocol/monitor/chains/near"
 	"github.com/mapprotocol/monitor/chains/sol"
@@ -47,18 +48,24 @@ func run(ctx *cli.Context) error {
 	sysErr := make(chan error)
 
 	c := core.New(sysErr)
-	// merge map chains
-	allChains := make([]config.RawChainConfig, 0, len(cfg.Chains)+1)
-	allChains = append(allChains, cfg.MapChain)
-	allChains = append(allChains, cfg.Chains...)
+	mapChain := cfg.MapChainConfig()
 
-	for idx, ac := range allChains {
+	// ensure map chain is initialized first by moving it to the front
+	chains := make([]config.RawChainConfig, 0, len(cfg.Chains))
+	chains = append(chains, *mapChain)
+	for i := range cfg.Chains {
+		if strings.ToLower(cfg.Chains[i].Name) != "map" {
+			chains = append(chains, cfg.Chains[i])
+		}
+	}
+
+	for idx, ac := range chains {
 		chainId, err := strconv.Atoi(ac.Id)
 		if err != nil {
 			return err
 		}
 		// write Map chains id to opts
-		ac.Opts[config.MapChainID] = cfg.MapChain.Id
+		ac.Opts[config.MapChainID] = mapChain.Id
 		chainConfig := &config.ChainConfig{
 			Name:             ac.Name,
 			Id:               config.ChainId(chainId),
