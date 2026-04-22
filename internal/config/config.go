@@ -92,8 +92,12 @@ type From struct {
 }
 
 type Tss struct {
-	Maintainer string `json:"maintainer"`
-	ScannerGap int64  `json:"scannerGap"`
+	Maintainer     string `json:"maintainer"`
+	ScannerGap     int64  `json:"scannerGap"`
+	BtcAddress     string `json:"btcAddress,omitempty"`
+	BlockstreamUrl string `json:"blockstreamUrl,omitempty"`
+	TssApiUrl      string `json:"tssApiUrl,omitempty"`
+	CrossTxLimit   int    `json:"crossTxLimit,omitempty"`
 }
 
 func (c *Config) validate() error {
