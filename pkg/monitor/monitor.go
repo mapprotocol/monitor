@@ -253,6 +253,7 @@ func (m *Monitor) mapCheck() {
 
 	if m.Cfg.Tss != nil {
 		m.tssCheck()
+		m.crossTxCheck()
 	}
 }
 
