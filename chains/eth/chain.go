@@ -82,3 +82,10 @@ func (c *Chain) Conn() chain.Connection {
 func (c *Chain) EthClient() *ethclient.Client {
 	return c.conn.Client()
 }
+
+// UpdateCfg forwards a config mutation to the underlying listener so the
+// hot-reload pipeline can copy fresh hot-reloadable fields onto the live
+// OptConfig.
+func (c *Chain) UpdateCfg(fn func(*config.OptConfig)) {
+	c.listen.UpdateCfg(fn)
+}

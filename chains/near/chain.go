@@ -82,3 +82,8 @@ func (c *Chain) EthClient() *nearclient.Client {
 func (c *Chain) Conn() *Connection {
 	return c.conn
 }
+
+// UpdateCfg forwards a config mutation to the listener (used by hot reload).
+func (c *Chain) UpdateCfg(fn func(*config.OptConfig)) {
+	c.listen.UpdateCfg(fn)
+}

@@ -19,6 +19,11 @@ type Listener interface {
 	// and tearing down its connection so the goroutine cannot touch a
 	// closed RPC client.
 	Wait()
+	// UpdateCfg applies fn to the live OptConfig under the listener's
+	// write lock. The reload pipeline invokes this with a closure that
+	// calls config.ApplyHotReloadable to copy hot-reloadable fields from
+	// a freshly-parsed OptConfig.
+	UpdateCfg(fn func(*config.OptConfig))
 }
 
 type Connection interface {
@@ -40,4 +45,7 @@ type Chain interface {
 	Id() config.ChainId
 	Name() string
 	Stop()
+	// UpdateCfg applies fn to the chain's live OptConfig (forwarded to its
+	// listener). Used by the hot-reload pipeline.
+	UpdateCfg(fn func(*config.OptConfig))
 }

@@ -75,3 +75,8 @@ func (c *Chain) Id() config.ChainId {
 	return c.cfg.Id
 
 }
+
+// UpdateCfg forwards a config mutation to the listener (used by hot reload).
+func (c *Chain) UpdateCfg(fn func(*config.OptConfig)) {
+	c.listen.UpdateCfg(fn)
+}

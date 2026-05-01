@@ -24,9 +24,10 @@ func (f *fakeChain) Start() error {
 	f.started.Store(true)
 	return nil
 }
-func (f *fakeChain) Stop()                   { f.stopped.Store(true) }
-func (f *fakeChain) Id() config.ChainId      { return f.id }
-func (f *fakeChain) Name() string            { return f.name }
+func (f *fakeChain) Stop()                                     { f.stopped.Store(true) }
+func (f *fakeChain) Id() config.ChainId                        { return f.id }
+func (f *fakeChain) Name() string                              { return f.name }
+func (f *fakeChain) UpdateCfg(fn func(*config.OptConfig))      {}
 
 func TestCore_AddRegistersChainAndDoesNotStart(t *testing.T) {
 	c := New(make(chan error))
