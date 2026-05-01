@@ -14,8 +14,8 @@ import (
 
 type Monitor struct {
 	*CommonListen
-	balance, syncedHeight, waterLine *big.Int
-	timestamp, heightTimestamp       int64
+	balance, syncedHeight      *big.Int
+	timestamp, heightTimestamp int64
 }
 
 func newMonitor(cs *CommonListen) *Monitor {
@@ -43,28 +43,32 @@ func (m *Monitor) Sync() error {
 // a block will be retried up to BlockRetryLimit times before continuing to the next block.
 // However，an error in synchronizing the log will cause the entire program to block
 func (m *Monitor) sync() error {
-	waterLine, ok := new(big.Int).SetString(m.cfg.WaterLine, 10)
-	if !ok {
-		m.sysErr <- errors.New("near waterLine Not Number")
-		return nil
-	}
-	waterLine = waterLine.Div(waterLine, config.WeiOfNear)
-	changeInterval, ok := new(big.Int).SetString(m.cfg.ChangeInterval, 10)
+	// changeInterval is immutable across reload, so read it once at startup.
+	initSnap := m.Snapshot()
+	changeInterval, ok := new(big.Int).SetString(initSnap.ChangeInterval, 10)
 	if !ok {
 		m.sysErr <- errors.New("near changeInterval Not Number")
 		return nil
 	}
-	m.waterLine = waterLine
+
 	for {
 		select {
 		case <-m.stop:
 			return errors.New("polling terminated")
 		default:
-			for _, from := range m.cfg.From {
-				m.checkBalance(from)
+			snap := m.Snapshot()
+			waterLine, ok := new(big.Int).SetString(snap.WaterLine, 10)
+			if !ok {
+				m.sysErr <- errors.New("near waterLine Not Number")
+				return nil
+			}
+			waterLine = waterLine.Div(waterLine, config.WeiOfNear)
+
+			for _, from := range snap.From {
+				m.checkBalance(from, waterLine, snap.Name)
 			}
 
-			height, err := mapprotocol.Get2MapHeight(m.cfg.Id)
+			height, err := mapprotocol.Get2MapHeight(snap.Id)
 			m.log.Info("Check Height", "syncHeight", height, "record", m.syncedHeight)
 			if err != nil {
 				m.log.Error("get2MapHeight failed", "err", err)
@@ -86,7 +90,7 @@ func (m *Monitor) sync() error {
 	}
 }
 
-func (m *Monitor) checkBalance(addr string) {
+func (m *Monitor) checkBalance(addr string, waterLine *big.Int, chainName string) {
 	resp, err := m.conn.Client().AccountView(context.Background(), addr, block.FinalityFinal())
 	if err != nil {
 		m.log.Error("Unable to get user balance failed", "from", addr, "err", err)
@@ -103,10 +107,9 @@ func (m *Monitor) checkBalance(addr string) {
 	}
 
 	conversion := new(big.Int).Div(v, config.WeiOfNear)
-	if conversion.Cmp(m.waterLine) == -1 {
-		// alarm
+	if conversion.Cmp(waterLine) == -1 {
 		util.Alarm(context.Background(),
-			fmt.Sprintf("Balance Less than %d Near chain=%s addr=%s near=%d", m.waterLine.Int64(),
-				m.cfg.Name, addr, conversion.Int64()))
+			fmt.Sprintf("Balance Less than %d Near chain=%s addr=%s near=%d", waterLine.Int64(),
+				chainName, addr, conversion.Int64()))
 	}
 }

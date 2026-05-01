@@ -21,11 +21,11 @@ var (
 
 type Monitor struct {
 	*chain.Common
-	conn                             *Connection
-	heightCount                      int64
-	balance, syncedHeight, waterLine *big.Int
-	timestamp                        int64
-	balMapping                       map[string]float64
+	conn                  *Connection
+	heightCount           int64
+	balance, syncedHeight *big.Int
+	timestamp             int64
+	balMapping            map[string]float64
 }
 
 func NewMonitor(cs *chain.Common, tronConn *Connection) *Monitor {
@@ -51,28 +51,29 @@ func (m *Monitor) Sync() error {
 }
 
 func (m *Monitor) sync() error {
-	waterLine, ok := new(big.Int).SetString(m.Cfg.WaterLine, 10)
-	if !ok {
-		m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
-		return nil
-	}
-	m.waterLine = waterLine
 	for {
 		select {
 		case <-m.Stop:
 			return errors.New("polling terminated")
 		default:
-			for _, ele := range m.Cfg.From {
+			snap := m.Snapshot()
+			waterLine, ok := new(big.Int).SetString(snap.WaterLine, 10)
+			if !ok {
+				m.SysErr <- fmt.Errorf("%s waterLine Not Number", snap.Name)
+				return nil
+			}
+
+			for _, ele := range snap.From {
 				if ele == "" {
 					continue
 				}
-				m.checkBalance(ele, "unknown", m.waterLine, true)
+				m.checkBalance(ele, "unknown", waterLine, true)
 			}
 
-			for _, ele := range m.Cfg.Users {
+			for _, ele := range snap.Users {
 				wl, ok := new(big.Int).SetString(ele.WaterLine, 10)
 				if !ok {
-					m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
+					m.SysErr <- fmt.Errorf("%s waterLine Not Number", snap.Name)
 					return nil
 				}
 				for _, addr := range strings.Split(ele.From, ",") {

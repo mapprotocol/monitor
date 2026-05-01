@@ -21,11 +21,11 @@ var (
 
 type Monitor struct {
 	*chain.Common
-	conn                             *rpc.Client
-	heightCount                      int64
-	balance, syncedHeight, waterLine *big.Int
-	timestamp                        int64
-	balMapping                       map[string]float64
+	conn                  *rpc.Client
+	heightCount           int64
+	balance, syncedHeight *big.Int
+	timestamp             int64
+	balMapping            map[string]float64
 }
 
 func NewMonitor(cs *chain.Common, conn *rpc.Client) *Monitor {
@@ -51,29 +51,31 @@ func (m *Monitor) Sync() error {
 }
 
 func (m *Monitor) sync() error {
-	waterLine, err := strconv.ParseFloat(m.Cfg.WaterLine, 64)
-	if err != nil {
-		m.Log.Error("Error parsing water line", "m.Cfg.WaterLine", m.Cfg.WaterLine, "err", err)
-		m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
-		return err
-	}
 	for {
 		select {
 		case <-m.Stop:
 			return errors.New("polling terminated")
 		default:
-			for _, ele := range m.Cfg.From {
+			snap := m.Snapshot()
+			waterLine, err := strconv.ParseFloat(snap.WaterLine, 64)
+			if err != nil {
+				m.Log.Error("Error parsing water line", "WaterLine", snap.WaterLine, "err", err)
+				m.SysErr <- fmt.Errorf("%s waterLine Not Number", snap.Name)
+				return err
+			}
+
+			for _, ele := range snap.From {
 				if ele == "" {
 					continue
 				}
 				m.checkBalance(ele, "unknown", waterLine)
 			}
 
-			for _, ele := range m.Cfg.Users {
+			for _, ele := range snap.Users {
 				wl, ok := new(big.Float).SetString(ele.WaterLine)
 				wlFloat, _ := wl.Float64()
 				if !ok {
-					m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
+					m.SysErr <- fmt.Errorf("%s waterLine Not Number", snap.Name)
 					return nil
 				}
 				for _, addr := range strings.Split(ele.From, ",") {
@@ -81,7 +83,7 @@ func (m *Monitor) sync() error {
 				}
 			}
 
-			for _, ct := range m.Cfg.ContractToken {
+			for _, ct := range snap.ContractToken {
 				m.checkToken(ct.Address, ct.Tokens)
 			}
 
