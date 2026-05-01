@@ -3,6 +3,7 @@ package chain
 import (
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/mapprotocol/monitor/internal/config"
 )
@@ -32,6 +33,38 @@ func TestCommonSnapshotReturnsStableValue(t *testing.T) {
 
 	if snap.WaterLine != "100" {
 		t.Fatalf("snapshot should be stable, got WaterLine=%q", snap.WaterLine)
+	}
+}
+
+// TestCommon_WgWaitsForGoroutines verifies Common.Wg is the canonical
+// synchronisation primitive a chain.Stop() can use to wait for its sync
+// goroutine to exit before tearing down the connection.
+func TestCommon_WgWaitsForGoroutines(t *testing.T) {
+	cfg := &config.OptConfig{}
+	c := NewCommonSync(nil, cfg, nil, nil, nil)
+
+	started := make(chan struct{})
+	c.Wg.Add(1)
+	go func() {
+		defer c.Wg.Done()
+		close(started)
+		// simulate a brief poll iteration
+		<-time.After(40 * time.Millisecond)
+	}()
+	<-started
+
+	done := make(chan struct{})
+	go func() { c.Wg.Wait(); close(done) }()
+
+	select {
+	case <-done:
+		t.Fatal("Wg.Wait returned before goroutine completed")
+	case <-time.After(15 * time.Millisecond):
+	}
+	select {
+	case <-done:
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("Wg.Wait did not return after goroutine completion")
 	}
 }
 

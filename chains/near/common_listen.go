@@ -21,6 +21,10 @@ type CommonListen struct {
 	sysErr      chan<- error // Reports fatal error to core
 	latestBlock metrics.LatestBlock
 
+	// Wg tracks background goroutines started by Sync; Wait blocks until
+	// they exit so chain.Stop() can safely close the connection.
+	Wg sync.WaitGroup
+
 	cfgMu sync.RWMutex
 }
 
@@ -49,4 +53,9 @@ func (c *CommonListen) UpdateCfg(fn func(*config.OptConfig)) {
 	c.cfgMu.Lock()
 	fn(c.cfg)
 	c.cfgMu.Unlock()
+}
+
+// Wait blocks until all background goroutines tracked via Wg have exited.
+func (c *CommonListen) Wait() {
+	c.Wg.Wait()
 }

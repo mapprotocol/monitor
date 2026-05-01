@@ -21,6 +21,13 @@ type Common struct {
 	MsgCh  chan struct{}
 	SysErr chan<- error // Reports fatal error to core
 
+	// Wg tracks the lifetime of background goroutines spawned by this
+	// chain's listener. Sync() must Wg.Add(1) before launching its loop
+	// and the loop must defer Wg.Done(); chain.Stop() then Wg.Wait()s on
+	// the close(stop) signal so the connection isn't torn down while the
+	// goroutine is still touching it.
+	Wg sync.WaitGroup
+
 	cfgMu sync.RWMutex
 }
 
@@ -59,4 +66,11 @@ func (c *Common) UpdateCfg(fn func(*config.OptConfig)) {
 	c.cfgMu.Lock()
 	fn(c.Cfg)
 	c.cfgMu.Unlock()
+}
+
+// Wait blocks until all background goroutines tracked via Wg have exited.
+// chain.Chain.Stop() typically calls this after close(stop) so the
+// connection can be torn down without racing the polling loop.
+func (c *Common) Wait() {
+	c.Wg.Wait()
 }

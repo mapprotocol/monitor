@@ -58,7 +58,8 @@ func (c *Chain) Start() error {
 }
 
 func (c *Chain) Stop() {
-
+	close(c.stop)
+	c.listen.Wait()
 }
 
 func (c *Chain) Id() config.ChainId {

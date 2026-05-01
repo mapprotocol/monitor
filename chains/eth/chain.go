@@ -63,9 +63,11 @@ func (c *Chain) Name() string {
 	return c.cfg.Name
 }
 
-// Stop signals to any running routines to exit
+// Stop signals running routines to exit, waits for them, then tears down
+// the underlying connection.
 func (c *Chain) Stop() {
 	close(c.stop)
+	c.listen.Wait()
 	if c.conn != nil {
 		c.conn.Close()
 	}

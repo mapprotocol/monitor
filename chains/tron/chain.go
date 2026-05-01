@@ -64,7 +64,11 @@ func (c *Chain) Start() error {
 }
 
 func (c *Chain) Stop() {
-
+	close(c.stop)
+	c.listen.Wait()
+	if c.conn != nil {
+		c.conn.Close()
+	}
 }
 
 func (c *Chain) Id() config.ChainId {

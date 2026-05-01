@@ -14,6 +14,11 @@ import (
 
 type Listener interface {
 	Sync() error
+	// Wait blocks until all goroutines spawned by Sync have exited.
+	// chain.Chain.Stop() should call Wait between closing the stop signal
+	// and tearing down its connection so the goroutine cannot touch a
+	// closed RPC client.
+	Wait()
 }
 
 type Connection interface {

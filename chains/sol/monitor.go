@@ -40,9 +40,10 @@ func NewMonitor(cs *chain.Common, conn *rpc.Client) *Monitor {
 
 func (m *Monitor) Sync() error {
 	m.Log.Debug("Starting listener...")
+	m.Wg.Add(1)
 	go func() {
-		err := m.sync()
-		if err != nil {
+		defer m.Wg.Done()
+		if err := m.sync(); err != nil {
 			m.Log.Error("Polling Account balance failed", "err", err)
 		}
 	}()

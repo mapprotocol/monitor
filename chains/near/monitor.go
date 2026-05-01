@@ -28,9 +28,10 @@ func newMonitor(cs *CommonListen) *Monitor {
 
 func (m *Monitor) Sync() error {
 	m.log.Debug("Starting listener...")
+	m.Wg.Add(1)
 	go func() {
-		err := m.sync()
-		if err != nil {
+		defer m.Wg.Done()
+		if err := m.sync(); err != nil {
 			m.log.Error("Polling blocks failed", "err", err)
 		}
 	}()
