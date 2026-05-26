@@ -65,7 +65,7 @@ func (m *Monitor) Sync() error {
 // effect on the next tick without restarting the goroutine.
 func (m *Monitor) prepareTick() (config.OptConfig, *big.Int, bool) {
 	snap := m.Snapshot()
-	wl, ok := new(big.Int).SetString(snap.WaterLine, 10)
+	wl, ok := config.ParseNativeWaterLine(snap.WaterLine, 18)
 	if !ok {
 		return snap, nil, false
 	}
@@ -103,7 +103,7 @@ func (m *Monitor) sync() error {
 			}
 
 			for _, user := range snap.Users {
-				wl, ok := new(big.Int).SetString(user.WaterLine, 10)
+				wl, ok := config.ParseNativeWaterLine(user.WaterLine, 18)
 				if !ok {
 					m.SysErr <- fmt.Errorf("%s waterLine Not Number", snap.Name)
 					return nil

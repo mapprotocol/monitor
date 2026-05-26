@@ -58,12 +58,11 @@ func (m *Monitor) sync() error {
 			return errors.New("polling terminated")
 		default:
 			snap := m.Snapshot()
-			waterLine, ok := new(big.Int).SetString(snap.WaterLine, 10)
+			waterLine, ok := config.ParseNativeWaterLine(snap.WaterLine, 24)
 			if !ok {
 				m.sysErr <- errors.New("near waterLine Not Number")
 				return nil
 			}
-			waterLine = waterLine.Div(waterLine, config.WeiOfNear)
 
 			for _, from := range snap.From {
 				m.checkBalance(from, waterLine, snap.Name)
@@ -107,10 +106,11 @@ func (m *Monitor) checkBalance(addr string, waterLine *big.Int, chainName string
 		m.timestamp = time.Now().Unix()
 	}
 
-	conversion := new(big.Int).Div(v, config.WeiOfNear)
-	if conversion.Cmp(waterLine) == -1 {
+	if v.Cmp(waterLine) == -1 {
+		conversion := new(big.Int).Div(v, config.WeiOfNear)
+		wl := new(big.Int).Div(new(big.Int).Set(waterLine), config.WeiOfNear)
 		util.Alarm(context.Background(),
-			fmt.Sprintf("Balance Less than %d Near chain=%s addr=%s near=%d", waterLine.Int64(),
+			fmt.Sprintf("Balance Less than %d Near chain=%s addr=%s near=%d", wl.Int64(),
 				chainName, addr, conversion.Int64()))
 	}
 }

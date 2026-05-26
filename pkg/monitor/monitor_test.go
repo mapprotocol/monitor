@@ -17,15 +17,15 @@ func TestPrepareTick_ReadsLatestWaterLine(t *testing.T) {
 	m := New(cs)
 
 	_, wl, ok := m.prepareTick()
-	if !ok || wl.Int64() != 100 {
-		t.Fatalf("first tick: ok=%v wl=%v, want ok=true wl=100", ok, wl)
+	if !ok || wl.String() != "100000000000000000000" {
+		t.Fatalf("first tick: ok=%v wl=%v, want ok=true wl=100000000000000000000", ok, wl)
 	}
 
 	cs.UpdateCfg(func(o *config.OptConfig) { o.WaterLine = "200" })
 
 	_, wl, ok = m.prepareTick()
-	if !ok || wl.Int64() != 200 {
-		t.Fatalf("second tick: ok=%v wl=%v, want ok=true wl=200", ok, wl)
+	if !ok || wl.String() != "200000000000000000000" {
+		t.Fatalf("second tick: ok=%v wl=%v, want ok=true wl=200000000000000000000", ok, wl)
 	}
 }
 
