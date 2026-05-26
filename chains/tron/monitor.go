@@ -23,7 +23,7 @@ type Monitor struct {
 	*chain.Common
 	conn                             *Connection
 	heightCount                      int64
-	balance, syncedHeight, waterLine *big.Int
+	balance, syncedHeight *big.Int
 	timestamp                        int64
 	balMapping                       map[string]float64
 }
@@ -40,9 +40,10 @@ func NewMonitor(cs *chain.Common, tronConn *Connection) *Monitor {
 
 func (m *Monitor) Sync() error {
 	m.Log.Debug("Starting listener...")
+	m.Wg.Add(1)
 	go func() {
-		err := m.sync()
-		if err != nil {
+		defer m.Wg.Done()
+		if err := m.sync(); err != nil {
 			m.Log.Error("Polling Account balance failed", "err", err)
 		}
 	}()
@@ -51,28 +52,29 @@ func (m *Monitor) Sync() error {
 }
 
 func (m *Monitor) sync() error {
-	waterLine, ok := new(big.Int).SetString(m.Cfg.WaterLine, 10)
-	if !ok {
-		m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
-		return nil
-	}
-	m.waterLine = waterLine
 	for {
 		select {
 		case <-m.Stop:
 			return errors.New("polling terminated")
 		default:
-			for _, ele := range m.Cfg.From {
+			snap := m.Snapshot()
+			waterLine, ok := new(big.Int).SetString(snap.WaterLine, 10)
+			if !ok {
+				m.SysErr <- fmt.Errorf("%s waterLine Not Number", snap.Name)
+				return nil
+			}
+
+			for _, ele := range snap.From {
 				if ele == "" {
 					continue
 				}
-				m.checkBalance(ele, "unknown", m.waterLine, true)
+				m.checkBalance(ele, "unknown", waterLine, true)
 			}
 
-			for _, ele := range m.Cfg.Users {
+			for _, ele := range snap.Users {
 				wl, ok := new(big.Int).SetString(ele.WaterLine, 10)
 				if !ok {
-					m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
+					m.SysErr <- fmt.Errorf("%s waterLine Not Number", snap.Name)
 					return nil
 				}
 				for _, addr := range strings.Split(ele.From, ",") {
@@ -80,8 +82,8 @@ func (m *Monitor) sync() error {
 				}
 			}
 
-			m.checkEnergy()
-			for _, ct := range m.Cfg.ContractToken {
+			m.checkEnergy(snap.Energies)
+			for _, ct := range snap.ContractToken {
 				m.checkToken(common.HexToAddress(ct.Address), ct.Tokens)
 			}
 
@@ -108,8 +110,8 @@ func (m *Monitor) checkBalance(form, group string, waterLine *big.Int, report bo
 
 }
 
-func (m *Monitor) checkEnergy() {
-	for _, ele := range m.Cfg.Energies {
+func (m *Monitor) checkEnergy(energies []config.Energy) {
+	for _, ele := range energies {
 		resource, err := m.conn.cli.GetAccountResource(ele.Address)
 		if err != nil {
 			m.Log.Error("CheckEnergy GetAccountResource failed", "account", ele.Address, "err", err)

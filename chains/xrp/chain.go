@@ -55,10 +55,15 @@ func (c *Chain) Start() error {
 }
 
 func (c *Chain) Stop() {
-
+	close(c.stop)
+	c.listen.Wait()
 }
 
 func (c *Chain) Id() config.ChainId {
 	return c.cfg.Id
 
+}
+
+func (c *Chain) UpdateCfg(fn func(*config.OptConfig)) {
+	c.listen.UpdateCfg(fn)
 }

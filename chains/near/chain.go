@@ -63,9 +63,11 @@ func (c *Chain) Name() string {
 	return c.cfg.Name
 }
 
-// Stop signals to any running routines to exit
+// Stop signals running routines to exit, waits for them, then tears down
+// the underlying connection.
 func (c *Chain) Stop() {
 	close(c.stop)
+	c.listen.Wait()
 	if c.conn != nil {
 		c.conn.Close()
 	}
@@ -79,4 +81,9 @@ func (c *Chain) EthClient() *nearclient.Client {
 // Conn return Connection interface for relayer register
 func (c *Chain) Conn() *Connection {
 	return c.conn
+}
+
+// UpdateCfg forwards a config mutation to the listener (used by hot reload).
+func (c *Chain) UpdateCfg(fn func(*config.OptConfig)) {
+	c.listen.UpdateCfg(fn)
 }

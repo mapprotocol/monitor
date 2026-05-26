@@ -30,10 +30,10 @@ var dece = big.NewInt(1000000000000000000)
 
 type Monitor struct {
 	*chain.Common
-	heightCount                      int64
-	balance, syncedHeight, waterLine *big.Int
-	timestamp                        int64
-	balMapping                       map[string]float64
+	heightCount           int64
+	balance, syncedHeight *big.Int
+	timestamp             int64
+	balMapping            map[string]float64
 }
 
 func New(cs *chain.Common) *Monitor {
@@ -47,9 +47,10 @@ func New(cs *chain.Common) *Monitor {
 
 func (m *Monitor) Sync() error {
 	m.Log.Debug("Starting listener...")
+	m.Wg.Add(1)
 	go func() {
-		err := m.sync()
-		if err != nil {
+		defer m.Wg.Done()
+		if err := m.sync(); err != nil {
 			m.Log.Error("Polling Account balance failed", "err", err)
 		}
 	}()
@@ -57,40 +58,54 @@ func (m *Monitor) Sync() error {
 	return nil
 }
 
-func (m *Monitor) sync() error {
-	waterLine, ok := new(big.Int).SetString(m.Cfg.WaterLine, 10)
+// prepareTick takes a Snapshot of the live OptConfig and parses the chain-
+// level WaterLine. It returns ok=false when WaterLine is malformed so the
+// caller can shut the chain down. It is invoked at the top of every poll
+// iteration so reconfigs (waterLine / users / from / contractToken) take
+// effect on the next tick without restarting the goroutine.
+func (m *Monitor) prepareTick() (config.OptConfig, *big.Int, bool) {
+	snap := m.Snapshot()
+	wl, ok := config.ParseNativeWaterLine(snap.WaterLine, 18)
 	if !ok {
-		m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
-		return nil
+		return snap, nil, false
 	}
-	m.waterLine = waterLine
-	// assemble users
-	for _, from := range m.Cfg.From {
-		m.balMapping[from] = 0
-	}
-	for _, user := range m.Cfg.Users {
-		for _, from := range strings.Split(user.From, ",") {
-			m.balMapping[from] = 0
-		}
-	}
+	return snap, wl, true
+}
 
+func (m *Monitor) sync() error {
 	for {
 		select {
 		case <-m.Stop:
 			return errors.New("polling terminated")
 		default:
-			//m.reportUser()
-			for _, ele := range m.Cfg.From {
+			snap, waterLine, ok := m.prepareTick()
+			if !ok {
+				m.SysErr <- fmt.Errorf("%s waterLine Not Number", snap.Name)
+				return nil
+			}
+
+			// rebuild balMapping each tick so user add/remove reload takes effect
+			m.balMapping = make(map[string]float64)
+			for _, from := range snap.From {
+				m.balMapping[from] = 0
+			}
+			for _, user := range snap.Users {
+				for _, from := range strings.Split(user.From, ",") {
+					m.balMapping[from] = 0
+				}
+			}
+
+			for _, ele := range snap.From {
 				if ele == "" {
 					continue
 				}
-				m.checkBalance(common.HexToAddress(ele), m.waterLine, "unknown", false)
+				m.checkBalance(common.HexToAddress(ele), waterLine, "unknown", false)
 			}
 
-			for _, user := range m.Cfg.Users {
-				wl, ok := new(big.Int).SetString(user.WaterLine, 10)
+			for _, user := range snap.Users {
+				wl, ok := config.ParseNativeWaterLine(user.WaterLine, 18)
 				if !ok {
-					m.SysErr <- fmt.Errorf("%s waterLine Not Number", m.Cfg.Name)
+					m.SysErr <- fmt.Errorf("%s waterLine Not Number", snap.Name)
 					return nil
 				}
 				for _, from := range strings.Split(user.From, ",") {
@@ -98,11 +113,11 @@ func (m *Monitor) sync() error {
 				}
 			}
 
-			for _, ct := range m.Cfg.ContractToken {
+			for _, ct := range snap.ContractToken {
 				m.checkToken(common.HexToAddress(ct.Address), ct.Tokens)
 			}
 
-			if m.Cfg.Id == m.Cfg.MapChainID {
+			if snap.Id == snap.MapChainID {
 				m.mapCheck()
 			} else {
 				m.OtherChainCheck()

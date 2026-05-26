@@ -2,17 +2,23 @@ package core
 
 import (
 	"fmt"
-	"github.com/ChainSafe/log15"
-	"github.com/mapprotocol/monitor/internal/chain"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+
+	"github.com/ChainSafe/log15"
+	"github.com/mapprotocol/monitor/internal/chain"
 )
 
 type Core struct {
 	Registry []chain.Chain
 	log      log15.Logger
 	sysErr   <-chan error
+
+	// mu guards Registry mutations once Start() is running so hot-reload
+	// can safely Add/Remove chains.
+	mu sync.Mutex
 }
 
 func New(sysErr <-chan error) *Core {
@@ -23,9 +29,72 @@ func New(sysErr <-chan error) *Core {
 	}
 }
 
-// AddChain registers the chain in the Registry and calls Chain.SetRouter()
-func (c *Core) AddChain(chain chain.Chain) {
-	c.Registry = append(c.Registry, chain)
+// AddChain registers chain in the Registry without starting it. Used during
+// initial wiring before Start() is called.
+func (c *Core) AddChain(ch chain.Chain) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.Registry = append(c.Registry, ch)
+}
+
+// Add registers ch and immediately starts it. It is safe to call after
+// Start(). Returns an error if a chain with the same name already exists or
+// if ch.Start() fails (in which case the registry is left unchanged).
+func (c *Core) Add(ch chain.Chain) error {
+	c.mu.Lock()
+	for _, existing := range c.Registry {
+		if existing.Name() == ch.Name() {
+			c.mu.Unlock()
+			return fmt.Errorf("chain %q already registered", ch.Name())
+		}
+	}
+	c.mu.Unlock()
+
+	if err := ch.Start(); err != nil {
+		return fmt.Errorf("start chain %q: %w", ch.Name(), err)
+	}
+
+	c.mu.Lock()
+	c.Registry = append(c.Registry, ch)
+	c.mu.Unlock()
+	c.log.Info(fmt.Sprintf("Added %s chain", ch.Name()))
+	return nil
+}
+
+// Remove looks up the chain by name, calls Stop on it (which blocks until
+// the polling goroutines exit), and removes it from the registry.
+func (c *Core) Remove(name string) error {
+	c.mu.Lock()
+	idx := -1
+	for i, ch := range c.Registry {
+		if ch.Name() == name {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		c.mu.Unlock()
+		return fmt.Errorf("chain %q not found", name)
+	}
+	target := c.Registry[idx]
+	c.Registry = append(c.Registry[:idx], c.Registry[idx+1:]...)
+	c.mu.Unlock()
+
+	target.Stop()
+	c.log.Info(fmt.Sprintf("Removed %s chain", name))
+	return nil
+}
+
+// Find returns the chain registered under name, or nil if not present.
+func (c *Core) Find(name string) chain.Chain {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, ch := range c.Registry {
+		if ch.Name() == name {
+			return ch
+		}
+	}
+	return nil
 }
 
 // Start will call all registered chains' Start methods and block forever (or until signal is received)

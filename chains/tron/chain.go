@@ -64,10 +64,19 @@ func (c *Chain) Start() error {
 }
 
 func (c *Chain) Stop() {
-
+	close(c.stop)
+	c.listen.Wait()
+	if c.conn != nil {
+		c.conn.Close()
+	}
 }
 
 func (c *Chain) Id() config.ChainId {
 	return c.cfg.Id
 
+}
+
+// UpdateCfg forwards a config mutation to the listener (used by hot reload).
+func (c *Chain) UpdateCfg(fn func(*config.OptConfig)) {
+	c.listen.UpdateCfg(fn)
 }
